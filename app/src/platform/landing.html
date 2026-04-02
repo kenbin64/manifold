@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KEN'S GAMES — 80s Arcade</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; font-family: 'VT323', monospace; cursor: default; }
+    #arcade-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+    .crt-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none;
+      background: repeating-linear-gradient(0deg, rgba(0,0,0,0.12) 0px, rgba(0,0,0,0.12) 1px, transparent 1px, transparent 3px);
+    }
+    .crt-vignette {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9; pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.7) 100%);
+    }
+    #hud {
+      position: fixed; top: 0; left: 0; width: 100%; z-index: 20; pointer-events: none;
+      text-align: center; padding: 24px 20px 0;
+    }
+    #hud h1 {
+      font-family: 'Press Start 2P', monospace; font-size: clamp(20px, 4vw, 48px);
+      color: #00ffcc; text-shadow: 0 0 20px #00ffcc, 0 0 60px #00ffcc, 0 0 120px rgba(0,255,204,0.3);
+      letter-spacing: 4px; animation: titlePulse 3s ease-in-out infinite;
+    }
+    #hud .subtitle {
+      font-size: clamp(14px, 2vw, 24px); color: #cc44ff; margin-top: 8px;
+      text-shadow: 0 0 10px #cc44ff; letter-spacing: 6px;
+    }
+    #info-bar {
+      position: fixed; bottom: 0; left: 0; width: 100%; z-index: 20; pointer-events: none;
+      text-align: center; padding: 0 20px 18px;
+    }
+    #info-bar .hint {
+      font-size: clamp(12px, 1.5vw, 18px); color: #00ff66;
+      text-shadow: 0 0 8px #00ff66; letter-spacing: 2px; animation: blink 1.5s step-end infinite;
+    }
+    #info-bar .credits {
+      font-size: clamp(10px, 1.2vw, 14px); color: rgba(255,255,255,0.3); margin-top: 6px;
+    }
+    #game-label {
+      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 20;
+      pointer-events: none; text-align: center; opacity: 0; transition: opacity 0.3s;
+    }
+    #game-label .name {
+      font-family: 'Press Start 2P', monospace; font-size: clamp(14px, 2vw, 28px);
+      color: #00ffcc; text-shadow: 0 0 15px #00ffcc; letter-spacing: 2px;
+    }
+    #game-label .desc {
+      font-size: clamp(12px, 1.4vw, 18px); color: #00ff66; margin-top: 6px;
+      text-shadow: 0 0 6px #00ff66;
+    }
+    #game-label .press {
+      font-family: 'Press Start 2P', monospace; font-size: clamp(10px, 1.2vw, 16px);
+      color: #cc44ff; margin-top: 10px; animation: blink 0.8s step-end infinite;
+    }
+    #game-label.visible { opacity: 1; }
+    @keyframes blink { 50% { opacity: 0; } }
+    @keyframes titlePulse {
+      0%, 100% { text-shadow: 0 0 20px #00ffcc, 0 0 60px #00ffcc; }
+      50% { text-shadow: 0 0 30px #00ffcc, 0 0 80px #00ffcc, 0 0 140px rgba(0,255,204,0.4); }
+    }
+    /* Loading screen */
+    #loading {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100;
+      background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      transition: opacity 0.8s;
+    }
+    #loading h2 {
+      font-family: 'Press Start 2P', monospace; font-size: 20px; color: #00ffcc;
+      text-shadow: 0 0 20px #00ffcc; animation: blink 1s step-end infinite;
+    }
+    #loading .bar { width: 200px; height: 4px; background: #111; margin-top: 20px; border-radius: 2px; }
+    #loading .bar-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #00ff66, #00ffcc, #cc44ff); border-radius: 2px; transition: width 0.3s; }
+    #loading.done { opacity: 0; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <h2>LOADING ARCADE...</h2>
+    <div class="bar"><div class="bar-fill" id="load-bar"></div></div>
+  </div>
+  <canvas id="arcade-canvas"></canvas>
+  <div class="crt-overlay"></div>
+  <div class="crt-vignette"></div>
+  <div id="hud">
+    <h1>KEN'S GAMES</h1>
+    <div class="subtitle">★ RADICAL ARCADE ZONE ★</div>
+  </div>
+  <div id="game-label">
+    <div class="name" id="label-name"></div>
+    <div class="desc" id="label-desc"></div>
+    <div class="press">► PRESS START ◄</div>
+  </div>
+  <div id="info-bar">
+    <div class="hint">— CLICK AN ARCADE CABINET TO PLAY —</div>
+    <div class="credits">POWERED BY MANIFOLD z = x · y &nbsp;|&nbsp; © 2025 KEN'S GAMES</div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+// === KEN'S GAMES — 3D ARCADE LANDING ===
+// Green (#00ff66), Cyan (#00ffcc), Purple (#cc44ff) neon palette
+// Clickable arcade cabinets → game pages
+
+const GAMES = [
+  { id:'fasttrack',     name:'FASTTRACK 3D',    desc:'Strategic Board Game',          color:0x00ffcc, url:'games/fasttrack/3d.html',           icon:'🎲' },
+  { id:'brickbreaker',  name:'BRICKBREAKER 3D', desc:'Saddle Surface Physics',        color:0xcc44ff, url:'games/brickbreaker3d/index.html',   icon:'🧱' },
+  { id:'zenxy',         name:'ZENXY',           desc:'Immersive z=xy Experiences',    color:0x00ff66, url:'games/zenxy/index.html',            icon:'✨' },
+  { id:'manifold3d',    name:'MANIFOLD 3D',     desc:'Gyroid Surface Explorer',       color:0x00ffcc, url:'games/manifold3d/marching-cubes.js', icon:'🔮' },
+  { id:'voidbreaker',   name:'VOID BREAKER',    desc:'3D Breakout • Dimensional',     color:0xcc44ff, url:'#',                                 icon:'💥' },
+];
+
+let scene, camera, renderer, raycaster, mouse, cabinets = [], hoveredCab = null, clock;
+const labelEl = document.getElementById('game-label');
+const labelName = document.getElementById('label-name');
+const labelDesc = document.getElementById('label-desc');
+
+function init() {
+  const bar = document.getElementById('load-bar');
+  bar.style.width = '30%';
+
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x050510, 0.035);
+
+  camera = new THREE.PerspectiveCamera(65, innerWidth / innerHeight, 0.1, 100);
+  camera.position.set(0, 2.5, 8);
+  camera.lookAt(0, 1.2, 0);
+
+  renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('arcade-canvas'), antialias: true });
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.8;
+
+  raycaster = new THREE.Raycaster();
+  mouse = new THREE.Vector2(-99, -99);
+  clock = new THREE.Clock();
+
+  bar.style.width = '50%';
+  buildRoom();
+  bar.style.width = '70%';
+  buildCabinets();
+  bar.style.width = '90%';
+  addLights();
+  addParticles();
+  bar.style.width = '100%';
+
+  setTimeout(() => document.getElementById('loading').classList.add('done'), 400);
+
+  window.addEventListener('resize', onResize);
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('click', onClick);
+  window.addEventListener('touchstart', onTouch, { passive: false });
+  animate();
+}
+
+// ── ROOM ──
+function buildRoom() {
+  // Floor — dark reflective tile
+  const floorGeo = new THREE.PlaneGeometry(30, 30);
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0x080818, roughness: 0.3, metalness: 0.8 });
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true;
+  scene.add(floor);
+
+  // Neon grid lines on floor
+  const gridHelper = new THREE.GridHelper(30, 60, 0x00ff66, 0x0a1a0a);
+  gridHelper.position.y = 0.01;
+  gridHelper.material.opacity = 0.3; gridHelper.material.transparent = true;
+  scene.add(gridHelper);
+
+  // Ceiling
+  const ceilGeo = new THREE.PlaneGeometry(30, 30);
+  const ceilMat = new THREE.MeshStandardMaterial({ color: 0x030308, roughness: 1 });
+  const ceil = new THREE.Mesh(ceilGeo, ceilMat);
+  ceil.rotation.x = Math.PI / 2; ceil.position.y = 5;
+  scene.add(ceil);
+
+  // Back wall
+  const wallGeo = new THREE.PlaneGeometry(30, 5);
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x0a0a20, roughness: 0.8 });
+  const backWall = new THREE.Mesh(wallGeo, wallMat);
+  backWall.position.set(0, 2.5, -6);
+  scene.add(backWall);
+
+  // Neon strips on walls — green, cyan, purple
+  const stripColors = [0x00ff66, 0x00ffcc, 0xcc44ff];
+  for (let i = 0; i < 3; i++) {
+    const stripGeo = new THREE.PlaneGeometry(28, 0.05);
+    const stripMat = new THREE.MeshBasicMaterial({ color: stripColors[i] });
+    const strip = new THREE.Mesh(stripGeo, stripMat);
+    strip.position.set(0, 1 + i * 1.5, -5.98);
+    scene.add(strip);
+  }
+}
+
+// ── ARCADE CABINETS ──
+function buildCabinets() {
+  const spacing = 3.2;
+  const startX = -((GAMES.length - 1) * spacing) / 2;
+
+  GAMES.forEach((game, i) => {
+    const group = new THREE.Group();
+    group.userData = game;
+
+    // Cabinet body
+    const bodyGeo = new THREE.BoxGeometry(1.2, 2.8, 0.9);
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x111122, roughness: 0.6, metalness: 0.4 });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 1.4;
+    group.add(body);
+
+    // Screen bezel
+    const bezelGeo = new THREE.BoxGeometry(0.95, 0.8, 0.05);
+    const bezelMat = new THREE.MeshStandardMaterial({ color: 0x050510, roughness: 0.2, metalness: 0.6 });
+    const bezel = new THREE.Mesh(bezelGeo, bezelMat);
+    bezel.position.set(0, 2.1, 0.43);
+    group.add(bezel);
+
+    // Screen glow (the clickable face)
+    const screenGeo = new THREE.PlaneGeometry(0.85, 0.65);
+    const screenMat = new THREE.MeshBasicMaterial({ color: game.color, transparent: true, opacity: 0.7 });
+    const screen = new THREE.Mesh(screenGeo, screenMat);
+    screen.position.set(0, 2.1, 0.46);
+    screen.userData = game;
+    group.add(screen);
+
+    // Neon edge glow — wireframe box
+    const edgeGeo = new THREE.BoxGeometry(1.22, 2.82, 0.92);
+    const edgeMat = new THREE.MeshBasicMaterial({ color: game.color, wireframe: true, transparent: true, opacity: 0.15 });
+    const edge = new THREE.Mesh(edgeGeo, edgeMat);
+    edge.position.y = 1.4;
+    group.add(edge);
+
+    // Top marquee glow
+    const marqueeGeo = new THREE.PlaneGeometry(1.1, 0.3);
+    const marqueeMat = new THREE.MeshBasicMaterial({ color: game.color, transparent: true, opacity: 0.5 });
+    const marquee = new THREE.Mesh(marqueeGeo, marqueeMat);
+    marquee.position.set(0, 2.75, 0.46);
+    group.add(marquee);
+
+    // Control panel (slanted)
+    const panelGeo = new THREE.BoxGeometry(1.0, 0.5, 0.4);
+    const panelMat = new THREE.MeshStandardMaterial({ color: 0x1a1a30, roughness: 0.5 });
+    const panel = new THREE.Mesh(panelGeo, panelMat);
+    panel.position.set(0, 1.1, 0.55);
+    panel.rotation.x = -0.3;
+    group.add(panel);
+
+    // Joystick
+    const stickGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.15, 8);
+    const stickMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.8 });
+    const stick = new THREE.Mesh(stickGeo, stickMat);
+    stick.position.set(-0.15, 1.35, 0.6);
+    group.add(stick);
+    // Joystick ball
+    const ballGeo = new THREE.SphereGeometry(0.05, 8, 8);
+    const ballMat = new THREE.MeshBasicMaterial({ color: game.color });
+    const ball = new THREE.Mesh(ballGeo, ballMat);
+    ball.position.set(-0.15, 1.43, 0.6);
+    group.add(ball);
+
+    // Buttons
+    for (let b = 0; b < 3; b++) {
+      const btnGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.02, 12);
+      const btnColors = [0x00ff66, 0x00ffcc, 0xcc44ff];
+      const btnMat = new THREE.MeshBasicMaterial({ color: btnColors[b] });
+      const btn = new THREE.Mesh(btnGeo, btnMat);
+      btn.position.set(0.08 + b * 0.1, 1.33, 0.58);
+      btn.rotation.x = -0.3;
+      group.add(btn);
+    }
+
+    // Point light from screen
+    const screenLight = new THREE.PointLight(game.color, 0.6, 3);
+    screenLight.position.set(0, 2.1, 1.2);
+    group.add(screenLight);
+
+    group.position.set(startX + i * spacing, 0, 0);
+    scene.add(group);
+    cabinets.push(group);
+  });
+}
+
+// ── LIGHTS ──
+function addLights() {
+  scene.add(new THREE.AmbientLight(0x0a0a1a, 0.4));
+
+  const spot1 = new THREE.SpotLight(0xcc44ff, 1.5, 20, Math.PI/4, 0.5);
+  spot1.position.set(-4, 5, 3); spot1.target.position.set(-4, 0, 0);
+  scene.add(spot1); scene.add(spot1.target);
+
+  const spot2 = new THREE.SpotLight(0x00ffcc, 1.5, 20, Math.PI/4, 0.5);
+  spot2.position.set(4, 5, 3); spot2.target.position.set(4, 0, 0);
+  scene.add(spot2); scene.add(spot2.target);
+
+  const floorLight = new THREE.PointLight(0x00ff66, 0.5, 15);
+  floorLight.position.set(0, 0.3, 5);
+  scene.add(floorLight);
+
+  const backLight = new THREE.PointLight(0xcc44ff, 0.8, 10);
+  backLight.position.set(0, 3, -5);
+  scene.add(backLight);
+}
+
+// ── FLOATING PARTICLES ──
+let particleSystem;
+function addParticles() {
+  const count = 300;
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(count * 3);
+  const cols = new Float32Array(count * 3);
+  const palette = [[0,1,0.4],[0,1,0.8],[0.8,0.27,1]];
+  for (let i = 0; i < count; i++) {
+    pos[i*3] = (Math.random()-0.5)*20;
+    pos[i*3+1] = Math.random()*5;
+    pos[i*3+2] = (Math.random()-0.5)*16;
+    const c = palette[Math.floor(Math.random()*3)];
+    cols[i*3]=c[0]; cols[i*3+1]=c[1]; cols[i*3+2]=c[2];
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+  const mat = new THREE.PointsMaterial({size:0.04, vertexColors:true, transparent:true, opacity:0.6});
+  particleSystem = new THREE.Points(geo, mat);
+  scene.add(particleSystem);
+}
+
+// ── ANIMATION ──
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  camera.position.x = Math.sin(t*0.15)*0.8;
+  camera.position.y = 2.5 + Math.sin(t*0.2)*0.15;
+  camera.lookAt(0, 1.4, 0);
+
+  cabinets.forEach((cab, i) => {
+    cab.position.y = Math.sin(t*0.8 + i*1.2)*0.03;
+    const scr = cab.children[2];
+    if (scr && scr.material) scr.material.opacity = 0.55 + Math.sin(t*2+i)*0.15;
+    const edge = cab.children[3];
+    if (edge && edge.material) edge.material.opacity = 0.1 + Math.sin(t*1.5+i*0.7)*0.08;
+  });
+
+  if (particleSystem) {
+    const p = particleSystem.geometry.attributes.position.array;
+    for (let i=0; i<p.length; i+=3) { p[i+1]+=0.003; if(p[i+1]>5) p[i+1]=0; }
+    particleSystem.geometry.attributes.position.needsUpdate = true;
+    particleSystem.rotation.y = t*0.02;
+  }
+
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(cabinets, true);
+  let newHover = null;
+  if (hits.length > 0) {
+    let obj = hits[0].object;
+    while (obj.parent && !obj.userData.id) obj = obj.parent;
+    if (obj.userData.id) newHover = obj;
+  }
+  if (newHover !== hoveredCab) {
+    if (hoveredCab) { hoveredCab.scale.set(1,1,1); document.body.style.cursor='default'; labelEl.classList.remove('visible'); }
+    if (newHover) {
+      newHover.scale.set(1.08,1.08,1.08); document.body.style.cursor='pointer';
+      labelName.textContent = newHover.userData.icon+' '+newHover.userData.name;
+      labelDesc.textContent = newHover.userData.desc;
+      labelEl.classList.add('visible');
+    }
+    hoveredCab = newHover;
+  }
+  renderer.render(scene, camera);
+}
+
+// ── INTERACTION ──
+function onMouseMove(e) { mouse.x=(e.clientX/innerWidth)*2-1; mouse.y=-(e.clientY/innerHeight)*2+1; }
+function onClick() {
+  if (hoveredCab && hoveredCab.userData.url && hoveredCab.userData.url !== '#') {
+    cabinets.forEach(c => { if(c!==hoveredCab) c.visible=false; });
+    hoveredCab.scale.set(1.2,1.2,1.2);
+    setTimeout(() => { window.location.href = hoveredCab.userData.url; }, 300);
+  }
+}
+function onTouch(e) {
+  if (e.touches.length>0) {
+    const t=e.touches[0]; mouse.x=(t.clientX/innerWidth)*2-1; mouse.y=-(t.clientY/innerHeight)*2+1;
+    setTimeout(()=>onClick(),100);
+  }
+}
+function onResize() { camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); }
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
+

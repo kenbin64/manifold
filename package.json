@@ -7,12 +7,15 @@
     "start": "ts-node app/src/index.ts",
     "build": "tsc",
     "test": "jest",
-    "dev": "ts-node --watch app/src/index.ts"
+    "dev": "ts-node --watch app/src/index.ts",
+    "server": "node server/index.js",
+    "deploy": "node deploy/pipeline.js"
   },
   "dependencies": {
     "@types/three": "^0.183.1",
     "three": "^0.183.2",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
     "@types/html": "^1.0.0",

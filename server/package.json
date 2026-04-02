@@ -1,0 +1,16 @@
+{
+  "name": "kensgames-manifold-server",
+  "version": "0.2.1-dev",
+  "description": "Gyroid Manifold Socket Server -- Two-labyrinth delta-sync relay",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "keywords": ["manifold", "gyroid", "websocket", "game-server"],
+  "author": "KensGames",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.20.0"
+  }
+}

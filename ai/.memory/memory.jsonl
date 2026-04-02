@@ -1,0 +1,17 @@
+{"type":"explicit-learning","query":"Seed memory","learning":"The project is called Butterfly Platform. It is a 3D arcade gaming platform built on the Gyroid Manifold Architecture.","ts":1775072000000,"confidence":1.0}
+{"type":"explicit-learning","query":"Seed memory","learning":"The core equation is z = x * y (saddle point). The Gyroid and Schwarz Diamond are the same surface via Associate Family (Bonnet rotation).","ts":1775072000001,"confidence":1.0}
+{"type":"explicit-learning","query":"Seed memory","learning":"manifold-core.js is located at app/src/platform/manifold-core.js. It is the browser-side manifold substrate.","ts":1775072000002,"confidence":1.0}
+{"type":"explicit-learning","query":"Seed memory","learning":"The AI engine (ManifoldAI class) is at ai/manifold-ai.js. The AI server runs on port 3377 at ai/server.js.","ts":1775072000003,"confidence":1.0}
+{"type":"explicit-learning","query":"Seed memory","learning":"VPS is at 100.70.142.122 via Tailscale. User is butterfly. SSH key at C:\\Users\\kbingh\\.ssh\\id_ed25519.","ts":1775072000004,"confidence":1.0}
+{"type":"explicit-learning","query":"Seed memory","learning":"Groq is the primary AI provider (llama-3.3-70b-versatile). Ollama on VPS (qwen2.5-coder:1.5b) is the fallback.","ts":1775072000005,"confidence":1.0}
+{"type":"explicit-learning","query":"Seed memory","learning":"Games: BrickBreaker3D, FastTrack, ZenXY (calculator/particles/synth), Manifold3D (marching cubes). All under app/src/platform/games/.","ts":1775072000006,"confidence":1.0}
+{"type":"explicit-learning","query":"Seed memory","learning":"Two-labyrinth architecture: Labyrinth A = encode/write, Labyrinth B = decode/read. They never conflict. The surface between them IS the manifold.","ts":1775072000007,"confidence":1.0}
+{"type":"explicit-learning","query":"Seed memory","learning":"Forbidden patterns: iterate dimensions (infinite), flatten to JSON, treat substrate as codec, straight-line shortcuts, treat encode=decode.","ts":1775072000008,"confidence":1.0}
+{"type":"explicit-learning","query":"Seed memory","learning":"The owner is Ken Bingham (ken.bingham64@gmail.com, GitHub: kenbin64). The repo is butterfly-platform.","ts":1775072000009,"confidence":1.0}
+{"type":"explicit-learning","query":"Seed memory","learning":"Three.js is used for 3D rendering in the browser. RAPIER is used for the physics engine.","ts":1775072000010,"confidence":1.0}
+{"type":"explicit-learning","query":"Seed memory","learning":"Core substrate files: core/substrate/base-substrate.js, core/manifold/manifold.js, core/facade/manifold-facade.js, core/geometry/saddle.js.","ts":1775072000011,"confidence":1.0}
+{"type":"explicit-learning","query":"Seed memory","learning":"Diamond Skeleton compression extracts only function signatures, class shapes, and exports from files — minimum material, maximum structural info.","ts":1775072000012,"confidence":1.0}
+{"type":"explicit-learning","query":"Seed memory","learning":"Delta caching uses FNV-1a hashing. If conversation context unchanged, cached prompt is returned with only user message swapped. O(1) encode.","ts":1775072000013,"confidence":1.0}
+{"type":"explicit-learning","query":"Seed memory","learning":"Geodesic token budgeting: system DNA 30%, user query 25%, file context 25%, memory 10%, history 10%. Total budget is provider-dependent.","ts":1775072000014,"confidence":1.0}
+
+{"type":"explicit-learning","query":"User taught me","learning":"The FastTrack game uses procedural track generation","ts":1775072268577,"confidence":1}

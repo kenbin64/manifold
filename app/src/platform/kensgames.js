@@ -24,8 +24,6 @@ const KensGames = {
   selectedGame: null,
   currentRoom: null,
 
-  AVATARS: ["👤", "😎", "🎮", "🎲", "🚀", "⚡", "🔥", "💎", "🌟", "🎯", "👾", "🤖"],
-
   // ═══════════════════════════════════════════════════════════════════════
   // INITIALIZATION
   // ═══════════════════════════════════════════════════════════════════════
@@ -33,18 +31,93 @@ const KensGames = {
     LobbyManifold.init();
 
     this.initBackground();
-    this.initAvatarPicker();
     this.loadGames();
 
     // Try to load saved profile
     const saved = LobbyManifold.loadProfile();
     if (saved) {
       this.player = saved;
-      document.getElementById("username-input").value = saved.username;
-      this.selectAvatar(saved.avatarId);
+      document.getElementById("username-input").value = saved.username || '';
     }
 
+    // Connect to manifold socket server
+    this._initSocket();
+
     console.log("KensGames initialized (manifold-native).");
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // SOCKET CONNECTION — Two-labyrinth client bridge
+  // ═══════════════════════════════════════════════════════════════════════
+  _initSocket() {
+    // Determine server URL: same host in production, localhost:3000 in dev
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = location.hostname || 'localhost';
+    const port = location.port || (location.protocol === 'https:' ? '443' : '3000');
+    const wsUrl = `${proto}//${host}:${port}`;
+
+    SocketConduit.on('connected', () => {
+      console.log('[KensGames] Socket connected');
+      const statusEl = document.getElementById('connection-status');
+      if (statusEl) { statusEl.textContent = '🟢 Online'; statusEl.className = 'status-online'; }
+    });
+
+    SocketConduit.on('disconnected', () => {
+      console.log('[KensGames] Socket disconnected — local mode');
+      const statusEl = document.getElementById('connection-status');
+      if (statusEl) { statusEl.textContent = '🔴 Offline'; statusEl.className = 'status-offline'; }
+    });
+
+    SocketConduit.on('authenticated', (data) => {
+      console.log('[KensGames] Authenticated:', data.player?.username);
+      if (data.player) {
+        this.player = data.player;
+        LobbyManifold._saveProfile(data.player);
+      }
+    });
+
+    SocketConduit.on('room', (data) => {
+      this._handleRoomEvent(data);
+    });
+
+    SocketConduit.connect(wsUrl);
+  },
+
+  _handleRoomEvent(data) {
+    switch (data.action) {
+      case 'created':
+      case 'player_joined':
+        this.currentRoom = data.room;
+        this.showRoom();
+        break;
+      case 'player_left':
+        this.currentRoom = data.room;
+        if (data.playerId === this.player?.id) {
+          this.currentRoom = null;
+          this.showLobby();
+        } else {
+          this.updateRoomPlayers();
+        }
+        break;
+      case 'game_started':
+        this.currentRoom = data.room;
+        const game = GameRegistry.get(this.currentRoom.gameId);
+        if (game?.url) window.location.href = game.url;
+        break;
+      case 'list':
+        this._serverRooms = data.rooms || [];
+        this.updateRoomList();
+        break;
+      case 'not_found':
+        alert('Room not found');
+        break;
+      case 'full':
+        alert('Room is full');
+        break;
+      case 'already_started':
+        alert('Game already started');
+        break;
+    }
   },
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -205,38 +278,164 @@ const KensGames = {
   },
 
   // ═══════════════════════════════════════════════════════════════════════
-  // AUTH / PROFILE
+  // AUTH / PROFILE — 3D Avatar Builder Flow
   // ═══════════════════════════════════════════════════════════════════════
-  initAvatarPicker() {
-    const grid = document.getElementById("avatar-grid");
-    grid.innerHTML = this.AVATARS.map((av, i) =>
-      `<div class="avatar-option${i === 0 ? " selected" : ""}" data-avatar="${av}" onclick="KensGames.selectAvatar('${av}')">${av}</div>`
-    ).join("");
-  },
-
-  selectAvatar(avatar) {
-    document.querySelectorAll(".avatar-option").forEach(el => {
-      el.classList.toggle("selected", el.dataset.avatar === avatar);
-    });
-  },
-
-  getSelectedAvatar() {
-    return document.querySelector(".avatar-option.selected")?.dataset.avatar || "👤";
-  },
-
   enterPlatform() {
     const username = document.getElementById("username-input").value.trim();
     if (!username) { alert("Please enter a username"); return; }
-
-    const avatar = this.getSelectedAvatar();
-    this.player = LobbyManifold.createPlayer(username, avatar);
-
-    this.showLobby();
+    this._pendingUsername = username;
+    this.showAvatarBuilder();
   },
 
   guestMode() {
-    const guestName = "Guest_" + Math.random().toString(36).substr(2, 4);
-    this.player = LobbyManifold.createPlayer(guestName, "👤");
+    this._pendingUsername = "Guest_" + Math.random().toString(36).substr(2, 4);
+    this.showAvatarBuilder();
+  },
+
+  showAvatarBuilder() {
+    this.showScreen("avatar-screen");
+    // Init controls if first visit
+    if (!this._avatarControlsReady) {
+      this._initAvatarControls();
+      this._avatarControlsReady = true;
+    }
+    // Init 3D preview
+    if (!AvatarBuilder._renderer) {
+      const savedCfg = AvatarBuilder.loadFromProfile() ? AvatarBuilder.getConfig() : null;
+      AvatarBuilder.init('avatar-3d-preview', savedCfg);
+    }
+    // Set name
+    const nameInput = document.getElementById('av-name');
+    if (nameInput && !nameInput.value) nameInput.value = this._pendingUsername;
+    this._syncAvatarControlState();
+    document.getElementById('avatar-name-display').textContent = this._pendingUsername;
+  },
+
+  _initAvatarControls() {
+    const AB = AvatarBuilder;
+    // Option buttons (gender, bodyType, hairStyle, glasses, topStyle, bottomStyle)
+    const optGroups = [
+      ['av-gender', 'gender', AB.GENDERS],
+      ['av-bodyType', 'bodyType', AB.BODY_TYPES],
+      ['av-hairStyle', 'hairStyle', AB.HAIR_STYLES],
+      ['av-glasses', 'glasses', AB.GLASSES_STYLES],
+      ['av-topStyle', 'topStyle', AB.TOP_STYLES],
+      ['av-bottomStyle', 'bottomStyle', AB.BOTTOM_STYLES],
+    ];
+    optGroups.forEach(([elId, key, values]) => {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      el.innerHTML = values.map(v =>
+        `<div class="ctl-opt" data-key="${key}" data-val="${v}" onclick="KensGames.onAvatarOpt('${key}','${v}')">${v}</div>`
+      ).join('');
+    });
+    // Color swatches (skinTone, hairColor, eyeColor, topColor, bottomColor, shoeColor)
+    const swatchGroups = [
+      ['av-skinTone', 'skinTone', AB.SKIN_TONES],
+      ['av-hairColor', 'hairColor', AB.HAIR_COLORS],
+      ['av-eyeColor', 'eyeColor', AB.EYE_COLORS],
+      ['av-topColor', 'topColor', AB.TOP_COLORS],
+      ['av-bottomColor', 'bottomColor', AB.BOTTOM_COLORS],
+      ['av-shoeColor', 'shoeColor', ['#333333','#1a1a1a','#8b4513','#ffffff','#c0392b','#2c3e50']],
+    ];
+    swatchGroups.forEach(([elId, key, colors]) => {
+      const el = document.getElementById(elId);
+      if (!el) return;
+      el.innerHTML = colors.map(c =>
+        `<div class="ctl-swatch" data-key="${key}" data-val="${c}" style="background:${c}" onclick="KensGames.onAvatarOpt('${key}','${c}')"></div>`
+      ).join('');
+    });
+    // Personalities
+    const pEl = document.getElementById('av-personality');
+    if (pEl) {
+      pEl.innerHTML = AB.PERSONALITIES.map(p =>
+        `<div class="ctl-personality" data-key="personality" data-val="${p.id}" onclick="KensGames.onAvatarOpt('personality',${p.id})" title="${p.desc}">
+          <span class="p-emoji">${p.emoji}</span><span>${p.name}</span>
+        </div>`
+      ).join('');
+    }
+  },
+
+  _syncAvatarControlState() {
+    const cfg = AvatarBuilder.getConfig();
+    // Highlight active options
+    document.querySelectorAll('.ctl-opt').forEach(el => {
+      el.classList.toggle('active', el.dataset.val === String(cfg[el.dataset.key]));
+    });
+    document.querySelectorAll('.ctl-swatch').forEach(el => {
+      el.classList.toggle('active', el.dataset.val === cfg[el.dataset.key]);
+    });
+    document.querySelectorAll('.ctl-personality').forEach(el => {
+      el.classList.toggle('active', Number(el.dataset.val) === cfg.personality);
+    });
+  },
+
+  onAvatarOpt(key, value) {
+    AvatarBuilder.set(key, value);
+    this._syncAvatarControlState();
+  },
+
+  onAvatarChange(key, value) {
+    if (key === 'name') {
+      AvatarBuilder.set('name', value);
+      document.getElementById('avatar-name-display').textContent = value || this._pendingUsername;
+    }
+  },
+
+  randomizeAvatar() {
+    const AB = AvatarBuilder;
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
+    const cfg = {
+      gender: pick(AB.GENDERS),
+      bodyType: pick(AB.BODY_TYPES),
+      skinTone: pick(AB.SKIN_TONES),
+      hairStyle: pick(AB.HAIR_STYLES),
+      hairColor: pick(AB.HAIR_COLORS),
+      eyeColor: pick(AB.EYE_COLORS),
+      glasses: pick(AB.GLASSES_STYLES),
+      topStyle: pick(AB.TOP_STYLES),
+      topColor: pick(AB.TOP_COLORS),
+      bottomStyle: pick(AB.BOTTOM_STYLES),
+      bottomColor: pick(AB.BOTTOM_COLORS),
+      shoeColor: pick(['#333333','#1a1a1a','#8b4513','#ffffff','#c0392b','#2c3e50']),
+      personality: Math.floor(Math.random() * 7),
+      name: AvatarBuilder.getConfig().name,
+    };
+    AvatarBuilder.setConfig(cfg);
+    this._syncAvatarControlState();
+  },
+
+  confirmAvatar() {
+    const cfg = AvatarBuilder.getConfig();
+    const username = cfg.name || this._pendingUsername;
+    AvatarBuilder.saveToProfile();
+
+    // Create player with avatar config — derive avatar address via z-invocation
+    const path = new PathExpression(HELIX.PLANE, cfg.bodyType?.length || 3, cfg.gender?.length || 3);
+    const avatarId = `3d:${Math.abs(path.z).toString(36).slice(0, 8)}_${(cfg.name || 'avatar').slice(0, 8)}`;
+    if (SocketConduit.connected) {
+      SocketConduit.register(username, avatarId);
+    }
+    this.player = LobbyManifold.createPlayer(username, avatarId);
+    this.player.avatarConfig = cfg;
+
+    // If user came via "Join by Code", go directly to that room
+    if (this._pendingJoinCode) {
+      const code = this._pendingJoinCode;
+      this._pendingJoinCode = null;
+      if (SocketConduit.connected) {
+        SocketConduit.joinRoom(code);
+      } else {
+        const result = LobbyManifold.joinRoom(this.player.id, code);
+        if (result.success) {
+          this.currentRoom = result.room;
+          this.showRoom();
+          return;
+        } else {
+          alert(result.error || "Could not join room — heading to lobby");
+        }
+      }
+    }
     this.showLobby();
   },
 
@@ -244,14 +443,24 @@ const KensGames = {
     const code = prompt("Enter 6-character room code:");
     if (!code) return;
 
-    if (!this.player) this.guestMode();
+    if (!this.player) {
+      // Need to create player first — store code, go through avatar builder
+      this._pendingJoinCode = code.toUpperCase();
+      this._pendingUsername = "Guest_" + Math.random().toString(36).substr(2, 4);
+      this.showAvatarBuilder();
+      return;
+    }
 
-    const result = LobbyManifold.joinRoom(this.player.id, code.toUpperCase());
-    if (result.success) {
-      this.currentRoom = result.room;
-      this.showRoom();
+    if (SocketConduit.connected) {
+      SocketConduit.joinRoom(code.toUpperCase());
     } else {
-      alert(result.error || "Could not join room");
+      const result = LobbyManifold.joinRoom(this.player.id, code.toUpperCase());
+      if (result.success) {
+        this.currentRoom = result.room;
+        this.showRoom();
+      } else {
+        alert(result.error || "Could not join room");
+      }
     }
   },
 
@@ -265,7 +474,20 @@ const KensGames = {
 
   showLobby() {
     document.getElementById("display-name").textContent = this.player.username;
-    document.getElementById("display-avatar").textContent = this.player.avatarId;
+    // Show mini 3D avatar if available, else emoji fallback
+    const avatarEl = document.getElementById("display-avatar");
+    if (this.player.avatarConfig && typeof AvatarBuilder !== 'undefined') {
+      try {
+        const mini = AvatarBuilder.createMiniAvatar(this.player.avatarConfig, 48);
+        avatarEl.textContent = '';
+        avatarEl.appendChild(mini);
+        mini.style.borderRadius = '50%';
+        mini.style.width = '36px';
+        mini.style.height = '36px';
+      } catch(e) { avatarEl.textContent = '👤'; }
+    } else {
+      avatarEl.textContent = this.player.avatarId || '👤';
+    }
     this.showScreen("lobby-screen");
     this.updateRoomList();
     this.initLobby3D();
@@ -471,39 +693,38 @@ const KensGames = {
   // ═══════════════════════════════════════════════════════════════════════
   vsAI() {
     if (!this.selectedGame) { alert("Select a game first"); return; }
-
     const difficulty = document.getElementById("ai-difficulty").value;
-    const result = LobbyManifold.vsAI(this.player.id, this.selectedGame.id, difficulty);
 
-    if (result.success) {
-      this.currentRoom = result.room;
-      this.showRoom();
+    if (SocketConduit.connected) {
+      SocketConduit.createRoom(this.selectedGame.id, 'SOLO', { aiDifficulty: difficulty });
     } else {
-      alert(result.error || "Could not create game");
+      const result = LobbyManifold.vsAI(this.player.id, this.selectedGame.id, difficulty);
+      if (result.success) { this.currentRoom = result.room; this.showRoom(); }
+      else { alert(result.error || "Could not create game"); }
     }
   },
 
   quickMatch() {
     if (!this.selectedGame) { alert("Select a game first"); return; }
 
-    const result = LobbyManifold.quickMatch(this.player.id, this.selectedGame.id);
-    if (result.success) {
-      this.currentRoom = result.room;
-      this.showRoom();
+    if (SocketConduit.connected) {
+      SocketConduit.createRoom(this.selectedGame.id, 'RANDOM');
     } else {
-      alert(result.error || "Could not find/create game");
+      const result = LobbyManifold.quickMatch(this.player.id, this.selectedGame.id);
+      if (result.success) { this.currentRoom = result.room; this.showRoom(); }
+      else { alert(result.error || "Could not find/create game"); }
     }
   },
 
   createPrivate() {
     if (!this.selectedGame) { alert("Select a game first"); return; }
 
-    const result = LobbyManifold.createRoom(this.player.id, this.selectedGame.id, "PRIVATE");
-    if (result.success) {
-      this.currentRoom = result.room;
-      this.showRoom();
+    if (SocketConduit.connected) {
+      SocketConduit.createRoom(this.selectedGame.id, 'PRIVATE');
     } else {
-      alert(result.error || "Could not create room");
+      const result = LobbyManifold.createRoom(this.player.id, this.selectedGame.id, "PRIVATE");
+      if (result.success) { this.currentRoom = result.room; this.showRoom(); }
+      else { alert(result.error || "Could not create room"); }
     }
   },
 
@@ -556,18 +777,22 @@ const KensGames = {
   },
 
   joinRoomByCode(code) {
-    const result = LobbyManifold.joinRoom(this.player.id, code);
-    if (result.success) {
-      this.currentRoom = result.room;
-      this.showRoom();
+    if (SocketConduit.connected) {
+      SocketConduit.joinRoom(code);
     } else {
-      alert(result.error || "Could not join room");
+      const result = LobbyManifold.joinRoom(this.player.id, code);
+      if (result.success) { this.currentRoom = result.room; this.showRoom(); }
+      else { alert(result.error || "Could not join room"); }
     }
   },
 
   leaveRoom() {
     if (this.currentRoom) {
-      LobbyManifold.leaveRoom(this.player.id, this.currentRoom.code);
+      if (SocketConduit.connected) {
+        SocketConduit.leaveRoom();
+      } else {
+        LobbyManifold.leaveRoom(this.player.id, this.currentRoom.code);
+      }
       this.currentRoom = null;
     }
     this.showLobby();
@@ -583,11 +808,14 @@ const KensGames = {
   startGame() {
     if (!this.currentRoom) return;
 
-    const result = LobbyManifold.startGame(this.currentRoom.code);
-    if (result.success) {
-      const game = GameRegistry.get(this.currentRoom.gameId);
-      if (game?.url) {
-        window.location.href = game.url;
+    if (SocketConduit.connected) {
+      SocketConduit.startGame();
+      // Server will broadcast 'game_started' — handled by _handleRoomEvent
+    } else {
+      const result = LobbyManifold.startGame(this.currentRoom.code);
+      if (result.success) {
+        const game = GameRegistry.get(this.currentRoom.gameId);
+        if (game?.url) window.location.href = game.url;
       }
     }
   }

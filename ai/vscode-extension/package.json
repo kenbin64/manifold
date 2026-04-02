@@ -1,0 +1,54 @@
+{
+  "name": "manifold-ai",
+  "displayName": "Manifold AI",
+  "description": "Private, self-contained AI coding assistant — z = x · y — No credits, no limits",
+  "version": "0.1.0",
+  "publisher": "kensgames",
+  "engines": { "vscode": "^1.80.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [{
+        "id": "manifold-ai",
+        "title": "Manifold AI",
+        "icon": "$(hubot)"
+      }]
+    },
+    "views": {
+      "manifold-ai": [{
+        "type": "webview",
+        "id": "manifold-ai.chat",
+        "name": "Chat"
+      }]
+    },
+    "commands": [
+      { "command": "manifold-ai.sendFile", "title": "Manifold AI: Send Current File" },
+      { "command": "manifold-ai.askAbout", "title": "Manifold AI: Ask About Selection" },
+      { "command": "manifold-ai.setModel", "title": "Manifold AI: Set Model" }
+    ],
+    "menus": {
+      "editor/context": [
+        { "command": "manifold-ai.sendFile", "group": "manifold" },
+        { "command": "manifold-ai.askAbout", "group": "manifold", "when": "editorHasSelection" }
+      ]
+    },
+    "configuration": {
+      "title": "Manifold AI",
+      "properties": {
+        "manifold-ai.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:3377",
+          "description": "Manifold AI server URL"
+        },
+        "manifold-ai.model": {
+          "type": "string",
+          "default": "qwen2.5-coder:7b",
+          "description": "Ollama model to use"
+        }
+      }
+    }
+  }
+}
+

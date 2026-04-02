@@ -1,0 +1,1858 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   MANIFOLD.CSS — Gyroid-Native Rendering Substrate
+   ═══════════════════════════════════════════════════════════════════════════
+   z = x · y — The saddle is the local operation.
+   sin(x)cos(y) + sin(y)cos(z) + sin(z)cos(x) = 0 — The Gyroid is global.
+   cos(x)cos(y)cos(z) − sin(x)sin(y)sin(z) = 0 — The Diamond is skeleton.
+
+   7-section helix layers:
+     void   → 0D  Reset. Nothing exists. Substrate cleared.
+     point  → 0D  Custom properties. Tokens. Path expression seeds.
+     line   → 1D  Typography. Single-axis flow. Geodesic rhythm.
+     width  → 2D  Layout primitives. Grid. Flex. Container queries.
+     plane  → 2D  Surfaces. Materials. Glass. Photorealism.
+     volume → 3D  Depth. Perspective. Parallax. Immersion.
+     whole  → ND  Animation. Cinematic. Transitions. Autonomy.
+
+   Two-labyrinth architecture:
+     Labyrinth A (Encode) → CSS custom properties (state declaration)
+     Labyrinth B (Decode) → Computed styles (visual materialization)
+     The surface between  → @layer boundary (zero-cost synchronization)
+
+   Delta caching:
+     contain + content-visibility + will-change = O(1) idle cost
+     GPU compositing via transform3d promotion
+     Viewport-only rendering: nothing outside the frustum materializes
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@layer manifold.void,
+       manifold.point,
+       manifold.line,
+       manifold.width,
+       manifold.plane,
+       manifold.volume,
+       manifold.whole;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §0  VOID — 0D Reset (Nothing exists before the manifold)
+   ═══════════════════════════════════════════════════════════════════════════ */
+@layer manifold.void {
+  *,
+  *::before,
+  *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    /* Delta cache: browser skips unchanged subtrees */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  /* Kill default UA allocations — zero mean curvature: no wasted structure */
+  html {
+    hanging-punctuation: first last;
+  }
+  img,
+  picture,
+  video,
+  canvas,
+  svg {
+    display: block;
+    max-width: 100%;
+  }
+  input,
+  button,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    overflow-wrap: break-word;
+  }
+  button {
+    cursor: pointer;
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+  ul,
+  ol {
+    list-style: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §1  POINT — 0D Custom Properties (Path Expression Seeds)
+   ═══════════════════════════════════════════════════════════════════════════
+   Every token is a coordinate on the Gyroid surface.
+   Labyrinth A: these are ENCODE-side declarations.
+   Labyrinth B decodes them during computed style resolution.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@layer manifold.point {
+  :root {
+    /* ─── Mathematical Constants ─── */
+    --phi: 1.618033988749895;
+    --phi-inv: 0.618033988749895;
+    --sqrt2: 1.4142135623730951;
+    --pi: 3.141592653589793;
+    --e: 2.718281828459045;
+    --tau: 6.283185307179586;
+
+    /* ─── 7-Section Helix Progression (Fibonacci-scaled spacing) ─── */
+    --s0: 0px; /* void   */
+    --s1: 1px; /* point  */
+    --s2: 2px; /* line   */
+    --s3: 4px; /* width  */
+    --s4: 8px; /* plane  */
+    --s5: 13px; /* volume */
+    --s6: 21px; /* whole  */
+    --s7: 34px;
+    --s8: 55px;
+    --s9: 89px;
+
+    /* ─── Dimensional Scale (rem-based, phi-ratio) ─── */
+    --dim-0: 0.618rem;
+    --dim-1: 1rem;
+    --dim-2: 1.618rem;
+    --dim-3: 2.618rem;
+    --dim-4: 4.236rem;
+    --dim-5: 6.854rem;
+    --dim-6: 11.089rem;
+
+    /* ─── Chromatic Substrate (Gyroid Surface Colors) ─── */
+    --void: #030008;
+    --void-deep: #06000f;
+    --void-panel: rgba(8, 2, 20, 0.88);
+    --void-glass: rgba(8, 2, 20, 0.75);
+    --void-glass-bright: rgba(15, 5, 30, 0.92);
+    --surface-border: rgba(255, 45, 149, 0.25);
+
+    /* ─── Labyrinth A: Encode Channel (Warm/Active) ─── */
+    --encode-primary: #ff2d95;
+    --encode-secondary: #ff6b6b;
+    --encode-tertiary: #ffa500;
+    --encode-gold: #ffd700;
+    --encode-glow: rgba(255, 45, 149, 0.5);
+
+    /* ─── Labyrinth B: Decode Channel (Cool/Reactive) ─── */
+    --decode-primary: #00d4ff;
+    --decode-secondary: #39ff14;
+    --decode-tertiary: #b24dff;
+    --decode-ice: #b9f2ff;
+    --decode-glow: rgba(0, 212, 255, 0.4);
+
+    /* ─── Text Dimensional Hierarchy ─── */
+    --text-whole: #ffffff;
+    --text-volume: #f0e6ff;
+    --text-plane: #c4b5d9;
+    --text-line: #9b8ab8;
+    --text-point: #5a4a72;
+
+    /* ─── Depth (z-axis manifold layers) ─── */
+    --z-void: 0;
+    --z-substrate: 1;
+    --z-surface: 10;
+    --z-elevated: 100;
+    --z-overlay: 500;
+    --z-modal: 1000;
+    --z-system: 9999;
+
+    /* ─── Timing (geodesic easing — saddle curvature) ─── */
+    --ease-saddle: cubic-bezier(0.37, 0, 0.63, 1);
+    --ease-encode: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-decode: cubic-bezier(0.61, 1, 0.88, 1);
+    --ease-helix: cubic-bezier(0.45, 0, 0.55, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-cinematic: cubic-bezier(0.83, 0, 0.17, 1);
+
+    --dt-instant: 50ms;
+    --dt-fast: 150ms;
+    --dt-normal: 300ms;
+    --dt-slow: 600ms;
+    --dt-cinematic: 1200ms;
+    --dt-epic: 2400ms;
+
+    /* ─── GPU Compositing Hints ─── */
+    --gpu-layer: translateZ(0);
+    --gpu-3d: translate3d(0, 0, 0);
+
+    /* ─── Perspective (3D immersion) ─── */
+    --perspective-close: 400px;
+    --perspective-mid: 800px;
+    --perspective-far: 1600px;
+    --perspective-epic: 3200px;
+
+    /* ─── Audio Channel State (JS bridge via custom properties) ─── */
+    --audio-master: 1;
+    --audio-music: 0.7;
+    --audio-sfx: 0.9;
+    --audio-voice: 1;
+    --audio-ambient: 0.4;
+    --audio-bpm: 120;
+    --audio-beat: 0;
+
+    /* ─── Agent State (autonomous entities) ─── */
+    --agent-state: idle;
+    --agent-energy: 1;
+    --agent-attention: 0;
+    --agent-mood: neutral;
+
+    /* ─── Simulation Channels ─── */
+    --sim-time: 0;
+    --sim-speed: 1;
+    --sim-gravity: -9.81;
+    --sim-friction: 0.3;
+    --sim-restitution: 0.7;
+
+    /* ─── Viewport Frustum (JS-driven, viewport-only rendering) ─── */
+    --vp-w: 100vw;
+    --vp-h: 100vh;
+    --vp-scroll: 0;
+    --vp-dpr: 1;
+
+    /* ─── Photorealistic Material Properties ─── */
+    --mat-roughness: 0.5;
+    --mat-metalness: 0;
+    --mat-ior: 1.5;
+    --mat-clearcoat: 0;
+    --mat-opacity: 1;
+    --mat-emissive: 0;
+
+    /* ─── Performance Budgets ─── */
+    --frame-budget: 16.67ms;
+    --paint-budget: 4ms;
+    --layout-budget: 2ms;
+  }
+
+  /* ─── Accessibility: Reduced Motion = Delta-Zero ─── */
+  @media (prefers-reduced-motion: reduce) {
+    :root {
+      --dt-instant: 0ms;
+      --dt-fast: 0ms;
+      --dt-normal: 0ms;
+      --dt-slow: 0ms;
+      --dt-cinematic: 0ms;
+      --dt-epic: 0ms;
+    }
+  }
+
+  /* ─── Color Scheme: Dark-First (Void is default) ─── */
+  @media (prefers-color-scheme: light) {
+    :root {
+      --void: #f0eef5;
+      --void-deep: #e8e4f0;
+      --void-panel: rgba(240, 235, 250, 0.92);
+      --void-glass: rgba(240, 235, 250, 0.8);
+      --text-whole: #0a0a12;
+      --text-volume: #1a1a2e;
+      --text-plane: #3a3550;
+      --text-line: #5a5470;
+      --text-point: #8a8498;
+    }
+  }
+
+  /* ─── High contrast ─── */
+  @media (prefers-contrast: high) {
+    :root {
+      --surface-border: rgba(255, 45, 149, 0.6);
+      --encode-primary: #ff0080;
+      --decode-primary: #00e5ff;
+      --text-volume: #ffffff;
+      --text-plane: #e0e0e0;
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §2  LINE — 1D Typography & Geodesic Rhythm
+   ═══════════════════════════════════════════════════════════════════════════
+   Text IS a 1D geodesic path on the manifold surface.
+   Font size follows phi-ratio dimensional scaling.
+   Line-height = phi (the golden ratio) for natural rhythm.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@layer manifold.line {
+  html {
+    font-size: clamp(14px, 1vw + 10px, 18px); /* responsive substrate seed */
+    line-height: var(--phi);
+    color: var(--text-volume);
+    background: var(--void);
+    scroll-behavior: smooth;
+    text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family:
+      "Rajdhani",
+      system-ui,
+      -apple-system,
+      sans-serif;
+    min-height: 100vh;
+    min-height: 100dvh; /* dynamic viewport for mobile */
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Dimensional type scale (phi-ratio progression) */
+  .text-0 {
+    font-size: var(--dim-0);
+  } /* 0.618rem - point */
+  .text-1 {
+    font-size: var(--dim-1);
+  } /* 1rem     - line  */
+  .text-2 {
+    font-size: var(--dim-2);
+  } /* 1.618rem - width */
+  .text-3 {
+    font-size: var(--dim-3);
+  } /* 2.618rem - plane */
+  .text-4 {
+    font-size: var(--dim-4);
+  } /* 4.236rem - volume */
+  .text-5 {
+    font-size: var(--dim-5);
+  } /* 6.854rem - whole */
+
+  /* Heading hierarchy: each level = one phi step down */
+  h1 {
+    font-size: var(--dim-5);
+    line-height: 1.1;
+    font-weight: 900;
+  }
+  h2 {
+    font-size: var(--dim-4);
+    line-height: 1.15;
+    font-weight: 800;
+  }
+  h3 {
+    font-size: var(--dim-3);
+    line-height: 1.2;
+    font-weight: 700;
+  }
+  h4 {
+    font-size: var(--dim-2);
+    line-height: 1.3;
+    font-weight: 600;
+  }
+  h5 {
+    font-size: var(--dim-1);
+    line-height: var(--phi);
+    font-weight: 600;
+  }
+  h6 {
+    font-size: var(--dim-0);
+    line-height: var(--phi);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  /* Orbitron for manifold display text */
+  .font-manifold,
+  .font-display {
+    font-family: "Orbitron", "Rajdhani", system-ui, sans-serif;
+    letter-spacing: 0.05em;
+  }
+
+  /* Text color hierarchy */
+  .text-whole {
+    color: var(--text-whole);
+  }
+  .text-volume {
+    color: var(--text-volume);
+  }
+  .text-plane {
+    color: var(--text-plane);
+  }
+  .text-line {
+    color: var(--text-line);
+  }
+  .text-point {
+    color: var(--text-point);
+  }
+  .text-encode {
+    color: var(--encode-primary);
+  }
+  .text-decode {
+    color: var(--decode-primary);
+  }
+
+  /* Neon text glow (encode/decode channels) */
+  .glow-encode {
+    text-shadow:
+      0 0 8px var(--encode-glow),
+      0 0 21px var(--encode-glow);
+  }
+  .glow-decode {
+    text-shadow:
+      0 0 8px var(--decode-glow),
+      0 0 21px var(--decode-glow);
+  }
+  .glow-dual {
+    background: linear-gradient(
+      90deg,
+      var(--encode-primary),
+      var(--decode-primary)
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 13px var(--encode-glow));
+  }
+
+  /* Gradient text (geodesic path through color space) */
+  .text-gradient-helix {
+    background: linear-gradient(
+      135deg,
+      var(--decode-primary),
+      var(--encode-primary),
+      var(--decode-tertiary),
+      var(--decode-primary)
+    );
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: helix-gradient 8s var(--ease-helix) infinite;
+  }
+
+  @keyframes helix-gradient {
+    0%,
+    100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
+  /* Selection (chiral — encode channel highlight) */
+  ::selection {
+    background: var(--encode-primary);
+    color: var(--void);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §3  WIDTH — 2D Layout Primitives (Dimensional Partitioning)
+   ═══════════════════════════════════════════════════════════════════════════
+   Grid = 2D surface patch. Flex = 1D geodesic.
+   Container queries = dimensional partitioning (not media breakpoints).
+   contain = GPU isolation boundary = O(1) repaint.
+   content-visibility = viewport-only materialization.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@layer manifold.width {
+  /* ─── GPU Containment Primitives (Latency Eliminator) ─── */
+  .contain-strict {
+    contain: strict;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 300px;
+  }
+  .contain-layout {
+    contain: layout style paint;
+  }
+  .contain-content {
+    contain: content;
+  }
+  .contain-paint {
+    contain: paint;
+  }
+
+  /* Viewport-only rendering: off-screen elements cost ZERO */
+  .viewport-only {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 200px;
+  }
+
+  /* GPU composited layer — promoted to own texture */
+  .gpu-layer {
+    will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+
+  /* ─── Flex Geodesics (1D flow paths) ─── */
+  .flex {
+    display: flex;
+  }
+  .flex-col {
+    display: flex;
+    flex-direction: column;
+  }
+  .flex-row {
+    display: flex;
+    flex-direction: row;
+  }
+  .flex-wrap {
+    flex-wrap: wrap;
+  }
+  .flex-1 {
+    flex: 1;
+  }
+  .flex-auto {
+    flex: auto;
+  }
+  .flex-none {
+    flex: none;
+  }
+
+  /* Alignment (saddle point = center of curvature) */
+  .items-center {
+    align-items: center;
+  }
+  .items-start {
+    align-items: flex-start;
+  }
+  .items-end {
+    align-items: flex-end;
+  }
+  .items-stretch {
+    align-items: stretch;
+  }
+  .justify-center {
+    justify-content: center;
+  }
+  .justify-between {
+    justify-content: space-between;
+  }
+  .justify-around {
+    justify-content: space-around;
+  }
+  .justify-evenly {
+    justify-content: space-evenly;
+  }
+  .justify-start {
+    justify-content: flex-start;
+  }
+  .justify-end {
+    justify-content: flex-end;
+  }
+  .center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ─── Grid Surface Patches (2D layouts) ─── */
+  .grid {
+    display: grid;
+  }
+  .grid-cols-1 {
+    grid-template-columns: repeat(1, 1fr);
+  }
+  .grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .grid-cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .grid-cols-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .grid-cols-auto {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+
+  /* Gap (Fibonacci spacing) */
+  .gap-0 {
+    gap: var(--s0);
+  }
+  .gap-1 {
+    gap: var(--s1);
+  }
+  .gap-2 {
+    gap: var(--s3);
+  }
+  .gap-3 {
+    gap: var(--s4);
+  }
+  .gap-4 {
+    gap: var(--s5);
+  }
+  .gap-5 {
+    gap: var(--s6);
+  }
+  .gap-6 {
+    gap: var(--s7);
+  }
+
+  /* ─── Padding / Margin (Fibonacci-scale) ─── */
+  .p-0 {
+    padding: var(--s0);
+  }
+  .p-1 {
+    padding: var(--s3);
+  }
+  .p-2 {
+    padding: var(--s4);
+  }
+  .p-3 {
+    padding: var(--s5);
+  }
+  .p-4 {
+    padding: var(--s6);
+  }
+  .p-5 {
+    padding: var(--s7);
+  }
+  .p-6 {
+    padding: var(--s8);
+  }
+
+  .m-0 {
+    margin: var(--s0);
+  }
+  .m-1 {
+    margin: var(--s3);
+  }
+  .m-2 {
+    margin: var(--s4);
+  }
+  .m-3 {
+    margin: var(--s5);
+  }
+  .m-4 {
+    margin: var(--s6);
+  }
+  .m-auto {
+    margin: auto;
+  }
+  .mx-auto {
+    margin-inline: auto;
+  }
+
+  /* ─── Width / Height constraints ─── */
+  .w-full {
+    width: 100%;
+  }
+  .h-full {
+    height: 100%;
+  }
+  .w-screen {
+    width: 100vw;
+  }
+  .h-screen {
+    height: 100vh;
+    min-height: 100dvh;
+  }
+  .max-w-sm {
+    max-width: 400px;
+  }
+  .max-w-md {
+    max-width: 600px;
+  }
+  .max-w-lg {
+    max-width: 900px;
+  }
+  .max-w-xl {
+    max-width: 1100px;
+  }
+  .max-w-2xl {
+    max-width: 1400px;
+  }
+
+  /* ─── Position (z-axis manifold layers) ─── */
+  .relative {
+    position: relative;
+  }
+  .absolute {
+    position: absolute;
+  }
+  .fixed {
+    position: fixed;
+  }
+  .sticky {
+    position: sticky;
+    top: 0;
+  }
+  .inset-0 {
+    inset: 0;
+  }
+
+  /* ─── Overflow (labyrinth boundary) ─── */
+  .overflow-hidden {
+    overflow: hidden;
+  }
+  .overflow-auto {
+    overflow: auto;
+  }
+  .overflow-x-clip {
+    overflow-x: clip;
+  }
+
+  /* ─── Container Queries (Dimensional Partitioning) ─── */
+  .container-inline {
+    container-type: inline-size;
+  }
+  .container-size {
+    container-type: size;
+  }
+
+  /* ─── Pointer / Interaction ─── */
+  .pointer-none {
+    pointer-events: none;
+  }
+  .pointer-auto {
+    pointer-events: auto;
+  }
+  .select-none {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .touch-pan-x {
+    touch-action: pan-x;
+  }
+  .touch-pan-y {
+    touch-action: pan-y;
+  }
+  .touch-pinch-zoom {
+    touch-action: pinch-zoom;
+  }
+  .touch-none {
+    touch-action: none;
+  }
+  .cursor-pointer {
+    cursor: pointer;
+  }
+  .cursor-grab {
+    cursor: grab;
+  }
+  .cursor-grabbing {
+    cursor: grabbing;
+  }
+
+  /* ─── Responsive Dimensional Partitions ─── */
+  @media (max-width: 480px) {
+    /* Point dimension — mobile */
+    .grid-cols-auto {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (min-width: 481px) and (max-width: 768px) {
+    /* Line dimension — tablet */
+    .grid-cols-auto {
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §4  PLANE — 2D Surfaces, Materials, Glass (Photorealistic)
+   ═══════════════════════════════════════════════════════════════════════════
+   A plane IS a surface patch on the Gyroid.
+   Materials use CSS backdrop-filter, gradients, and blend modes
+   to approximate PBR (physically based rendering) in 2D.
+   Glass = the manifold surface between labyrinths.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@layer manifold.plane {
+  /* ─── Base Surface (the manifold boundary) ─── */
+  .surface {
+    background: var(--void-panel);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--s5);
+    contain: layout style paint;
+  }
+
+  /* ─── Glass Materials (manifold surface between labyrinths) ─── */
+  .glass {
+    background: var(--void-glass);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--s5);
+    backdrop-filter: blur(13px) saturate(1.4);
+    -webkit-backdrop-filter: blur(13px) saturate(1.4);
+    box-shadow:
+      0 0 34px rgba(255, 45, 149, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+  .glass-bright {
+    background: var(--void-glass-bright);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--s5);
+    backdrop-filter: blur(21px) saturate(1.6) brightness(1.1);
+    -webkit-backdrop-filter: blur(21px) saturate(1.6) brightness(1.1);
+    box-shadow:
+      0 4px 34px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+  .glass-frosted {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--s5);
+    backdrop-filter: blur(34px) saturate(1.2);
+    -webkit-backdrop-filter: blur(34px) saturate(1.2);
+  }
+
+  /* ─── PBR Material Classes (CSS-approximated) ─── */
+  .mat-matte {
+    background: var(--void-panel);
+    box-shadow: none;
+  }
+  .mat-metallic {
+    background: linear-gradient(
+      135deg,
+      rgba(180, 180, 200, 0.12) 0%,
+      rgba(60, 60, 80, 0.08) 40%,
+      rgba(200, 200, 220, 0.15) 60%,
+      rgba(60, 60, 80, 0.08) 100%
+    );
+    backdrop-filter: blur(8px) brightness(1.05);
+    -webkit-backdrop-filter: blur(8px) brightness(1.05);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.12),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  }
+  .mat-emissive {
+    box-shadow:
+      0 0 21px var(--encode-glow),
+      0 0 55px var(--encode-glow),
+      inset 0 0 13px rgba(255, 45, 149, 0.1);
+  }
+
+  /* ─── Border Variants ─── */
+  .border-encode {
+    border-color: var(--encode-primary);
+    box-shadow: 0 0 13px var(--encode-glow);
+  }
+  .border-decode {
+    border-color: var(--decode-primary);
+    box-shadow: 0 0 13px var(--decode-glow);
+  }
+  .border-gold {
+    border-color: var(--encode-gold);
+    box-shadow: 0 0 13px rgba(255, 215, 0, 0.3);
+  }
+
+  /* ─── Shadow Depth Levels (saddle curvature depth) ─── */
+  .shadow-0 {
+    box-shadow: none;
+  }
+  .shadow-1 {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+  .shadow-2 {
+    box-shadow: 0 4px 13px rgba(0, 0, 0, 0.3);
+  }
+  .shadow-3 {
+    box-shadow: 0 8px 34px rgba(0, 0, 0, 0.3);
+  }
+  .shadow-4 {
+    box-shadow: 0 13px 55px rgba(0, 0, 0, 0.4);
+  }
+  .shadow-neon-encode {
+    box-shadow:
+      0 0 21px var(--encode-glow),
+      0 0 55px var(--encode-glow);
+  }
+  .shadow-neon-decode {
+    box-shadow:
+      0 0 21px var(--decode-glow),
+      0 0 55px var(--decode-glow);
+  }
+
+  /* ─── Radial Glow (mouse-tracking via custom props) ─── */
+  .glow-track {
+    --gx: 50%;
+    --gy: 50%;
+    position: relative;
+  }
+  .glow-track::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      600px circle at var(--gx) var(--gy),
+      rgba(0, 212, 255, 0.08),
+      transparent 50%
+    );
+    pointer-events: none;
+    border-radius: inherit;
+    z-index: 0;
+  }
+
+  /* ─── CRT Scanline Overlay (retro photorealism) ─── */
+  .crt {
+    position: relative;
+  }
+  .crt::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.03) 0px,
+      rgba(0, 0, 0, 0.03) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    pointer-events: none;
+    z-index: var(--z-overlay);
+  }
+
+  /* ─── Vignette (radial depth) ─── */
+  .vignette::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(
+      ellipse at 50% 50%,
+      transparent 50%,
+      rgba(0, 0, 0, 0.4) 100%
+    );
+    pointer-events: none;
+    z-index: var(--z-overlay);
+  }
+
+  /* ─── Rounded corner presets ─── */
+  .rounded-0 {
+    border-radius: 0;
+  }
+  .rounded-sm {
+    border-radius: var(--s3);
+  }
+  .rounded {
+    border-radius: var(--s4);
+  }
+  .rounded-lg {
+    border-radius: var(--s5);
+  }
+  .rounded-xl {
+    border-radius: var(--s6);
+  }
+  .rounded-full {
+    border-radius: 9999px;
+  }
+
+  /* ─── Interactive Surface States ─── */
+  .interactive {
+    cursor: pointer;
+    transition:
+      transform var(--dt-fast) var(--ease-encode),
+      box-shadow var(--dt-fast) var(--ease-encode),
+      border-color var(--dt-fast) var(--ease-encode);
+  }
+  .interactive:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 34px rgba(0, 212, 255, 0.12);
+    border-color: var(--decode-primary);
+  }
+  .interactive:active {
+    transform: translateY(0px) scale(0.98);
+    transition-duration: var(--dt-instant);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §5  VOLUME — 3D Depth, Perspective, Parallax (Immersion)
+   ═══════════════════════════════════════════════════════════════════════════
+   Volume = one period cell of the Gyroid.
+   Perspective IS the z-axis of z = x · y.
+   preserve-3d maintains the labyrinth topology in DOM space.
+   Parallax = geodesic depth cues.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@layer manifold.volume {
+  /* ─── Perspective Containers (establish 3D space) ─── */
+  .perspective {
+    perspective: var(--perspective-mid);
+  }
+  .perspective-close {
+    perspective: var(--perspective-close);
+  }
+  .perspective-far {
+    perspective: var(--perspective-far);
+  }
+  .perspective-epic {
+    perspective: var(--perspective-epic);
+  }
+
+  /* Preserve 3D for nested transforms (labyrinth depth) */
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+  .flat {
+    transform-style: flat;
+  }
+
+  /* ─── Depth Layers (z-axis positioning) ─── */
+  .depth-0 {
+    transform: translateZ(0);
+  }
+  .depth-1 {
+    transform: translateZ(8px);
+  }
+  .depth-2 {
+    transform: translateZ(21px);
+  }
+  .depth-3 {
+    transform: translateZ(55px);
+  }
+  .depth-4 {
+    transform: translateZ(89px);
+  }
+  .depth-n1 {
+    transform: translateZ(-8px);
+  }
+  .depth-n2 {
+    transform: translateZ(-21px);
+  }
+  .depth-n3 {
+    transform: translateZ(-55px);
+  }
+
+  /* ─── 3D Rotations (saddle traversal) ─── */
+  .rotate-x-5 {
+    transform: rotateX(5deg);
+  }
+  .rotate-x-10 {
+    transform: rotateX(10deg);
+  }
+  .rotate-x-15 {
+    transform: rotateX(15deg);
+  }
+  .rotate-x-n5 {
+    transform: rotateX(-5deg);
+  }
+  .rotate-y-5 {
+    transform: rotateY(5deg);
+  }
+  .rotate-y-10 {
+    transform: rotateY(10deg);
+  }
+  .rotate-y-15 {
+    transform: rotateY(15deg);
+  }
+  .rotate-y-n5 {
+    transform: rotateY(-5deg);
+  }
+  .rotate-z-5 {
+    transform: rotateZ(5deg);
+  }
+  .rotate-z-45 {
+    transform: rotateZ(45deg);
+  }
+  .rotate-z-90 {
+    transform: rotateZ(90deg);
+  }
+  .rotate-z-180 {
+    transform: rotateZ(180deg);
+  }
+
+  /* ─── Scale (dimensional zoom) ─── */
+  .scale-90 {
+    transform: scale(0.9);
+  }
+  .scale-95 {
+    transform: scale(0.95);
+  }
+  .scale-100 {
+    transform: scale(1);
+  }
+  .scale-105 {
+    transform: scale(1.05);
+  }
+  .scale-110 {
+    transform: scale(1.1);
+  }
+  .scale-120 {
+    transform: scale(1.2);
+  }
+  .scale-150 {
+    transform: scale(1.5);
+  }
+
+  /* ─── Parallax Depth Effect ─── */
+  .parallax-container {
+    perspective: var(--perspective-far);
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: 100vh;
+    height: 100dvh;
+  }
+  .parallax-back {
+    transform: translateZ(-300px) scale(2);
+    z-index: var(--z-void);
+  }
+  .parallax-mid {
+    transform: translateZ(-100px) scale(1.3);
+    z-index: var(--z-substrate);
+  }
+  .parallax-front {
+    transform: translateZ(0);
+    z-index: var(--z-surface);
+  }
+
+  /* ─── Card Flip (chiral encode/decode) ─── */
+  .card-3d {
+    perspective: var(--perspective-close);
+    cursor: pointer;
+  }
+  .card-3d-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    transition: transform var(--dt-slow) var(--ease-helix);
+  }
+  .card-3d.flipped .card-3d-inner {
+    transform: rotateY(180deg);
+  }
+  .card-3d-front,
+  .card-3d-back {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+  }
+  .card-3d-back {
+    transform: rotateY(180deg);
+  }
+
+  /* ─── Scene Container (full 3D immersion) ─── */
+  .scene-3d {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    perspective: var(--perspective-mid);
+    overflow: hidden;
+    contain: strict;
+  }
+  .scene-3d > * {
+    transform-style: preserve-3d;
+  }
+
+  /* ─── Canvas Overlay (Three.js / WebGL integration) ─── */
+  .canvas-3d {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    z-index: var(--z-void);
+    touch-action: none;
+  }
+  .canvas-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: var(--z-surface);
+    pointer-events: none;
+  }
+  .canvas-overlay > * {
+    pointer-events: auto;
+  }
+
+  /* ─── Tilt on Hover (saddle curvature response) ─── */
+  .tilt-hover {
+    transition: transform var(--dt-fast) var(--ease-encode);
+  }
+  .tilt-hover:hover {
+    transform: perspective(600px) rotateX(3deg) rotateY(-3deg) translateZ(8px);
+  }
+
+  /* ─── Backface (chiral visibility) ─── */
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+  .backface-visible {
+    backface-visibility: visible;
+  }
+
+  /* ─── Opacity / Visibility ─── */
+  .opacity-0 {
+    opacity: 0;
+  }
+  .opacity-25 {
+    opacity: 0.25;
+  }
+  .opacity-50 {
+    opacity: 0.5;
+  }
+  .opacity-75 {
+    opacity: 0.75;
+  }
+  .opacity-100 {
+    opacity: 1;
+  }
+  .invisible {
+    visibility: hidden;
+  }
+  .visible {
+    visibility: visible;
+  }
+
+  /* ─── Display States ─── */
+  .hidden {
+    display: none;
+  }
+  .block {
+    display: block;
+  }
+  .inline {
+    display: inline;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   §6  WHOLE — ND Animation, Cinematic, Autonomy, AI Bridge
+   ═══════════════════════════════════════════════════════════════════════════
+   Whole = the entire Gyroid collapsed to a single point in N+1.
+   Animations ARE geodesic traversals through time.
+   Transitions ARE labyrinth passages between states.
+   Agent states and audio channels are CSS-to-JS bridges.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@layer manifold.whole {
+  /* ─── Transition Primitives (geodesic state changes) ─── */
+  .transition-none {
+    transition: none;
+  }
+  .transition-fast {
+    transition: all var(--dt-fast) var(--ease-saddle);
+  }
+  .transition-normal {
+    transition: all var(--dt-normal) var(--ease-saddle);
+  }
+  .transition-slow {
+    transition: all var(--dt-slow) var(--ease-saddle);
+  }
+  .transition-cinematic {
+    transition: all var(--dt-cinematic) var(--ease-cinematic);
+  }
+
+  .transition-encode {
+    transition: all var(--dt-normal) var(--ease-encode);
+  }
+  .transition-decode {
+    transition: all var(--dt-normal) var(--ease-decode);
+  }
+  .transition-helix {
+    transition: all var(--dt-normal) var(--ease-helix);
+  }
+  .transition-spring {
+    transition: all var(--dt-normal) var(--ease-spring);
+  }
+
+  /* Transform-only transitions (GPU composited, zero layout cost) */
+  .transition-transform {
+    transition:
+      transform var(--dt-normal) var(--ease-encode),
+      opacity var(--dt-normal) var(--ease-encode);
+  }
+
+  /* ─── Core Keyframe Library (manifold motions) ─── */
+
+  /* Fade (labyrinth passage — appear/disappear) */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+  .animate-fade-in {
+    animation: fade-in var(--dt-normal) var(--ease-encode) both;
+  }
+  .animate-fade-out {
+    animation: fade-out var(--dt-normal) var(--ease-encode) both;
+  }
+
+  /* Scale Emerge (point → volume) */
+  @keyframes scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes scale-out {
+    from {
+      opacity: 1;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+  }
+  .animate-scale-in {
+    animation: scale-in var(--dt-normal) var(--ease-spring) both;
+  }
+  .animate-scale-out {
+    animation: scale-out var(--dt-fast) var(--ease-encode) both;
+  }
+
+  /* Slide (geodesic 1D traversal) */
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(21px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes slide-down {
+    from {
+      opacity: 0;
+      transform: translateY(-21px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes slide-left {
+    from {
+      opacity: 0;
+      transform: translateX(21px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  @keyframes slide-right {
+    from {
+      opacity: 0;
+      transform: translateX(-21px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  .animate-slide-up {
+    animation: slide-up var(--dt-normal) var(--ease-encode) both;
+  }
+  .animate-slide-down {
+    animation: slide-down var(--dt-normal) var(--ease-encode) both;
+  }
+  .animate-slide-left {
+    animation: slide-left var(--dt-normal) var(--ease-encode) both;
+  }
+  .animate-slide-right {
+    animation: slide-right var(--dt-normal) var(--ease-encode) both;
+  }
+
+  /* 3D Flip (chiral state change) */
+  @keyframes flip-in-y {
+    from {
+      opacity: 0;
+      transform: rotateY(-90deg);
+    }
+    to {
+      opacity: 1;
+      transform: rotateY(0);
+    }
+  }
+  @keyframes flip-in-x {
+    from {
+      opacity: 0;
+      transform: rotateX(-90deg);
+    }
+    to {
+      opacity: 1;
+      transform: rotateX(0);
+    }
+  }
+  .animate-flip-y {
+    animation: flip-in-y var(--dt-slow) var(--ease-helix) both;
+  }
+  .animate-flip-x {
+    animation: flip-in-x var(--dt-slow) var(--ease-helix) both;
+  }
+
+  /* Helix Spin (continuous saddle rotation) */
+  @keyframes helix-spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  .animate-spin {
+    animation: helix-spin 2s linear infinite;
+  }
+  .animate-spin-slow {
+    animation: helix-spin 8s linear infinite;
+  }
+
+  /* Pulse (z-invocation heartbeat) */
+  @keyframes pulse {
+    0%,
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.05);
+      opacity: 0.85;
+    }
+  }
+  @keyframes pulse-glow {
+    0%,
+    100% {
+      box-shadow: 0 0 8px var(--encode-glow);
+    }
+    50% {
+      box-shadow:
+        0 0 34px var(--encode-glow),
+        0 0 55px var(--encode-glow);
+    }
+  }
+  .animate-pulse {
+    animation: pulse 2s var(--ease-helix) infinite;
+  }
+  .animate-pulse-glow {
+    animation: pulse-glow 2s var(--ease-helix) infinite;
+  }
+
+  /* Float (ambient hover — zero-g saddle drift) */
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+  .animate-float {
+    animation: float 3s var(--ease-helix) infinite;
+  }
+
+  /* Shake (error/impact — curvature disruption) */
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    20% {
+      transform: translateX(-5px);
+    }
+    40% {
+      transform: translateX(5px);
+    }
+    60% {
+      transform: translateX(-3px);
+    }
+    80% {
+      transform: translateX(3px);
+    }
+  }
+  .animate-shake {
+    animation: shake 0.4s var(--ease-saddle);
+  }
+
+  /* Neon Flicker (arcade CRT tube warmup) */
+  @keyframes neon-flicker {
+    0%,
+    19%,
+    21%,
+    23%,
+    25%,
+    54%,
+    56%,
+    100% {
+      opacity: 1;
+    }
+    20%,
+    24%,
+    55% {
+      opacity: 0.4;
+    }
+  }
+  .animate-neon-flicker {
+    animation: neon-flicker 3s linear infinite;
+  }
+
+  /* ─── Cinematic Entrance Sequences ─── */
+  @keyframes cinematic-emerge {
+    0% {
+      opacity: 0;
+      transform: scale(1.3) translateY(40px);
+      filter: blur(13px);
+    }
+    60% {
+      opacity: 0.8;
+      filter: blur(3px);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+      filter: blur(0);
+    }
+  }
+  @keyframes cinematic-zoom-in {
+    from {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  @keyframes cinematic-wipe-left {
+    from {
+      clip-path: inset(0 100% 0 0);
+    }
+    to {
+      clip-path: inset(0 0 0 0);
+    }
+  }
+  @keyframes cinematic-wipe-circle {
+    from {
+      clip-path: circle(0% at 50% 50%);
+    }
+    to {
+      clip-path: circle(100% at 50% 50%);
+    }
+  }
+  .animate-cinematic-emerge {
+    animation: cinematic-emerge var(--dt-cinematic) var(--ease-cinematic) both;
+  }
+  .animate-cinematic-zoom {
+    animation: cinematic-zoom-in var(--dt-slow) var(--ease-spring) both;
+  }
+  .animate-cinematic-wipe {
+    animation: cinematic-wipe-left var(--dt-cinematic) var(--ease-cinematic)
+      both;
+  }
+  .animate-cinematic-circle {
+    animation: cinematic-wipe-circle var(--dt-cinematic) var(--ease-cinematic)
+      both;
+  }
+
+  /* ─── Stagger Children (dimensional cascade) ─── */
+  .stagger > * {
+    opacity: 0;
+    animation: slide-up var(--dt-normal) var(--ease-encode) both;
+  }
+  .stagger > *:nth-child(1) {
+    animation-delay: 0ms;
+  }
+  .stagger > *:nth-child(2) {
+    animation-delay: 50ms;
+  }
+  .stagger > *:nth-child(3) {
+    animation-delay: 100ms;
+  }
+  .stagger > *:nth-child(4) {
+    animation-delay: 150ms;
+  }
+  .stagger > *:nth-child(5) {
+    animation-delay: 200ms;
+  }
+  .stagger > *:nth-child(6) {
+    animation-delay: 250ms;
+  }
+  .stagger > *:nth-child(7) {
+    animation-delay: 300ms;
+  }
+  .stagger > *:nth-child(8) {
+    animation-delay: 350ms;
+  }
+  .stagger > *:nth-child(9) {
+    animation-delay: 400ms;
+  }
+  .stagger > *:nth-child(10) {
+    animation-delay: 450ms;
+  }
+
+  /* Animation control */
+  .animate-paused {
+    animation-play-state: paused;
+  }
+  .animate-running {
+    animation-play-state: running;
+  }
+  .animate-delay-1 {
+    animation-delay: var(--dt-fast);
+  }
+  .animate-delay-2 {
+    animation-delay: var(--dt-normal);
+  }
+  .animate-delay-3 {
+    animation-delay: var(--dt-slow);
+  }
+  .animate-delay-4 {
+    animation-delay: var(--dt-cinematic);
+  }
+
+  /* ─── Agent State Classes (autonomous entity visualization) ─── */
+  [data-agent-state="idle"] {
+    --agent-pulse: 0;
+  }
+  [data-agent-state="thinking"] {
+    --agent-pulse: 1;
+    animation: pulse 1.5s var(--ease-helix) infinite;
+  }
+  [data-agent-state="acting"] {
+    --agent-pulse: 2;
+    animation: pulse-glow 0.8s var(--ease-encode) infinite;
+  }
+  [data-agent-state="observing"] {
+    --agent-pulse: 0.5;
+    opacity: 0.85;
+  }
+  [data-agent-state="error"] {
+    animation:
+      shake 0.4s var(--ease-saddle),
+      pulse-glow 1s linear infinite;
+    --encode-glow: rgba(255, 60, 60, 0.5);
+  }
+
+  /* ─── Audio-Reactive Classes (CSS ← JS bridge) ─── */
+  .audio-reactive {
+    transition: transform var(--dt-instant) linear;
+  }
+  [data-audio-beat="1"] .audio-reactive {
+    transform: scale(1.03);
+  }
+  .audio-visualizer {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 34px;
+  }
+  .audio-bar {
+    flex: 1;
+    background: linear-gradient(
+      to top,
+      var(--decode-primary),
+      var(--encode-primary)
+    );
+    border-radius: 2px 2px 0 0;
+    transition: height var(--dt-instant) linear;
+    min-height: 2px;
+  }
+
+  /* ─── Screen Transition (view change = labyrinth passage) ─── */
+  .screen {
+    position: fixed;
+    inset: 0;
+    display: none;
+    flex-direction: column;
+    z-index: var(--z-surface);
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: var(--void);
+  }
+  .screen.active {
+    display: flex;
+    animation: fade-in var(--dt-normal) var(--ease-encode) both;
+  }
+
+  /* ─── Button Presets (manifold-native interactions) ─── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--s3);
+    padding: var(--s4) var(--s6);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--s4);
+    background: var(--void-panel);
+    color: var(--text-whole);
+    font-family: inherit;
+    font-size: var(--dim-1);
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      transform var(--dt-fast) var(--ease-encode),
+      box-shadow var(--dt-fast) var(--ease-encode),
+      background var(--dt-fast) var(--ease-encode);
+    contain: layout style paint;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 21px rgba(0, 212, 255, 0.15);
+  }
+  .btn:active {
+    transform: translateY(0) scale(0.97);
+    transition-duration: var(--dt-instant);
+  }
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Button variants */
+  .btn-encode {
+    background: var(--encode-primary);
+    border-color: var(--encode-primary);
+    color: var(--void);
+  }
+  .btn-encode:hover {
+    box-shadow: 0 4px 21px var(--encode-glow);
+    background: #ff4aa6;
+  }
+  .btn-decode {
+    background: var(--decode-primary);
+    border-color: var(--decode-primary);
+    color: var(--void);
+  }
+  .btn-decode:hover {
+    box-shadow: 0 4px 21px var(--decode-glow);
+    background: #33ddff;
+  }
+  .btn-gold {
+    background: linear-gradient(
+      135deg,
+      var(--encode-gold),
+      var(--encode-tertiary)
+    );
+    border-color: var(--encode-gold);
+    color: var(--void);
+  }
+  .btn-ghost {
+    background: transparent;
+    border-color: transparent;
+  }
+  .btn-ghost:hover {
+    background: var(--void-glass);
+  }
+  .btn-sm {
+    padding: var(--s3) var(--s4);
+    font-size: var(--dim-0);
+  }
+  .btn-lg {
+    padding: var(--s5) var(--s7);
+    font-size: var(--dim-2);
+  }
+
+  /* ─── Input Fields (encode channel receivers) ─── */
+  .input {
+    width: 100%;
+    padding: var(--s4) var(--s5);
+    background: var(--void-deep);
+    border: 1px solid var(--surface-border);
+    border-radius: var(--s4);
+    color: var(--text-whole);
+    font-family: inherit;
+    font-size: var(--dim-1);
+    outline: none;
+    transition:
+      border-color var(--dt-fast) var(--ease-encode),
+      box-shadow var(--dt-fast) var(--ease-encode);
+  }
+  .input:focus {
+    border-color: var(--decode-primary);
+    box-shadow: 0 0 13px var(--decode-glow);
+  }
+  .input::placeholder {
+    color: var(--text-point);
+  }
+
+  /* ─── Modal (manifold overlay portal) ─── */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: var(--z-modal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fade-in var(--dt-fast) var(--ease-encode) both;
+  }
+  .modal-content {
+    max-width: 500px;
+    width: 90%;
+    animation: scale-in var(--dt-normal) var(--ease-spring) both;
+  }
+
+  /* ─── Toast Notifications (1D geodesic message) ─── */
+  .toast-container {
+    position: fixed;
+    top: var(--s6);
+    right: var(--s6);
+    z-index: var(--z-system);
+    display: flex;
+    flex-direction: column;
+    gap: var(--s3);
+    pointer-events: none;
+  }
+  .toast {
+    pointer-events: auto;
+    padding: var(--s4) var(--s5);
+    border-radius: var(--s4);
+    animation: slide-left var(--dt-normal) var(--ease-spring) both;
+    max-width: 360px;
+  }
+
+  /* ─── Scrollbar (labyrinth channel indicator) ─── */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 45, 149, 0.3);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 45, 149, 0.5);
+  }
+
+  /* Firefox scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 45, 149, 0.3) transparent;
+  }
+
+  /* ─── Focus Ring (accessibility + encode highlight) ─── */
+  :focus-visible {
+    outline: 2px solid var(--decode-primary);
+    outline-offset: 2px;
+  }
+
+  /* ─── Print (Whole → void: strip everything non-essential) ─── */
+  @media print {
+    .no-print,
+    .crt::after,
+    .vignette::after {
+      display: none;
+    }
+    * {
+      background: white;
+      color: black;
+      box-shadow: none;
+      text-shadow: none;
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   END MANIFOLD.CSS
+   ═══════════════════════════════════════════════════════════════════════════
+   7 layers. 1 surface. 2 labyrinths. 0 straight lines.
+   Minimum material. Maximum strength. Maximum surface area.
+   ═══════════════════════════════════════════════════════════════════════════ */

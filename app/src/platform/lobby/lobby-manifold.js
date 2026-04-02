@@ -4,45 +4,21 @@
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Player lobby with AI players, private games, and matchmaking.
- * All state stored as PathExpr addresses via RepresentationTable.
- * No local Map data objects. No GameManifold.carve(). No data drift.
+ * All state stored as PathExpression addresses via RepresentationTable.
+ * No Map wrappers. No fake hashing. No object reconstruction.
  *
- * MATCHMAKING MODES:
- *   SOLO     — 1 human + 2-3 AI players
- *   RANDOM   — 3-4 players, quick match
- *   PRIVATE  — 2-6 players, invite code
- *   AI_ONLY  — Practice with all AI
+ * Two-Labyrinth Architecture:
+ *   Labyrinth A (Encode): write player/room state as path expressions
+ *   Labyrinth B (Decode): read values via z-invocation with delta caching
  *
- * Stack:
- *   LobbyManifold (player/room RepresentationTables)
- *     ↓
- *   RepresentationTable (addresses, not bytes)
- *     ↓
- *   PathExpressions → Manifold (z = x·y)
+ * RepresentationTable from manifold-core.js provides:
+ *   encode(address, value, section) → PathExpression.fromValue → stores x,y
+ *   decode(address) → z = x·y (O(1) if clean via delta cache)
+ *   encodeString(address, value) → strings ARE paths
+ *   decodeString(address) → direct path retrieval
  *
  * ═══════════════════════════════════════════════════════════════════════════
  */
-
-// ─── Lightweight RepresentationTable (browser-side, address-only) ──────────
-class LobbyRepTable {
-  constructor(name) { this.name = name; this._d = new Map(); this._s = new Map(); }
-  set(key, value) { this._d.set(key, value); }
-  get(key) { return this._d.get(key); }
-  setString(key, value) { this._s.set(key, value); }
-  getString(key) { return this._s.get(key); }
-  has(key) { return this._d.has(key) || this._s.has(key); }
-  get size() { return this._d.size + this._s.size; }
-}
-
-// ─── Path expressions (z = x·y manifold discovery) ───────────────────────
-function discoverPath(seed, section) {
-  const x = ((seed * 2654435761) >>> 0) / 4294967296;
-  const y = ((seed * 340573321 + section * 1337) >>> 0) / 4294967296;
-  return { x, y, section };
-}
-function evaluatePath(path) {
-  return path.x * path.y;  // z = x·y
-}
 
 const LobbyManifold = {
   /** @type {Map<string, RepresentationTable>} player id → RepresentationTable */
@@ -75,17 +51,17 @@ const LobbyManifold = {
   // ═══════════════════════════════════════════════════════════════════════
   createPlayer(username, avatarId = "👤") {
     const id = `player_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
-    const table = new LobbyRepTable(`player:${id}`);
+    const table = new RepresentationTable(`player:${id}`);
 
-    table.setString("id", id);
-    table.setString("username", username);
-    table.setString("avatarId", avatarId);
-    table.set("isAI", 0, 0);             // section 0 = AUTH
-    table.set("status", 0, 0);           // 0=online, 1=searching, 2=in_game
-    table.set("wins", 0, 0);
-    table.set("losses", 0, 0);
-    table.set("games", 0, 0);
-    table.set("createdAt", Date.now(), 0);
+    table.encodeString("id", id);
+    table.encodeString("username", username);
+    table.encodeString("avatarId", avatarId);
+    table.encode("isAI", 0, HELIX.VOID);
+    table.encode("status", 0, HELIX.VOID);       // 0=online, 1=searching, 2=in_game
+    table.encode("wins", 0, HELIX.POINT);
+    table.encode("losses", 0, HELIX.POINT);
+    table.encode("games", 0, HELIX.POINT);
+    table.encode("createdAt", Date.now(), HELIX.POINT);
 
     this._playerTables.set(id, table);
 
@@ -97,49 +73,63 @@ const LobbyManifold = {
   _materializePlayer(id, table) {
     const statusMap = { 0: "online", 1: "searching", 2: "in_game" };
     return {
-      id: table.getString("id") || id,
-      username: table.getString("username") || "",
-      avatarId: table.getString("avatarId") || "👤",
-      isAI: (table.get("isAI") || 0) > 0.5,
-      status: statusMap[Math.round(table.get("status") || 0)] || "online",
-      currentRoom: table.getString("currentRoom") || null,
+      id: table.decodeString("id") || id,
+      username: table.decodeString("username") || "",
+      avatarId: table.decodeString("avatarId") || "👤",
+      isAI: (table.decode("isAI") || 0) > 0.5,
+      status: statusMap[Math.round(table.decode("status") || 0)] || "online",
+      currentRoom: table.decodeString("currentRoom") || null,
       stats: {
-        wins: Math.round(table.get("wins") || 0),
-        losses: Math.round(table.get("losses") || 0),
-        games: Math.round(table.get("games") || 0),
+        wins: Math.round(table.decode("wins") || 0),
+        losses: Math.round(table.decode("losses") || 0),
+        games: Math.round(table.decode("games") || 0),
       },
-      createdAt: Math.round(table.get("createdAt") || 0),
-      difficulty: table.getString("difficulty") || undefined,
+      createdAt: Math.round(table.decode("createdAt") || 0),
+      difficulty: table.decodeString("difficulty") || undefined,
     };
   },
 
+  /** Persist player state as individual path addresses — no JSON serialization */
   _saveProfile(player) {
     try {
-      if (typeof localStorage !== "undefined") {
-        localStorage.setItem("kensgames_profile", JSON.stringify(player));
-      }
+      if (typeof localStorage === "undefined") return;
+      const pfx = "kgm:profile:";
+      localStorage.setItem(pfx + "id", player.id || "");
+      localStorage.setItem(pfx + "username", player.username || "");
+      localStorage.setItem(pfx + "avatarId", player.avatarId || "👤");
+      localStorage.setItem(pfx + "wins", String(player.stats?.wins || 0));
+      localStorage.setItem(pfx + "losses", String(player.stats?.losses || 0));
+      localStorage.setItem(pfx + "games", String(player.stats?.games || 0));
     } catch (e) { /* silent */ }
   },
 
+  /** Load player state from individual path addresses — no JSON reconstruction */
   loadProfile() {
     try {
       if (typeof localStorage === "undefined") return null;
-      const data = localStorage.getItem("kensgames_profile");
-      if (data) {
-        const player = JSON.parse(data);
-        // Re-register as RepresentationTable
-        const table = new LobbyRepTable(`player:${player.id}`);
-        table.setString("id", player.id);
-        table.setString("username", player.username);
-        table.setString("avatarId", player.avatarId || "👤");
-        table.set("isAI", 0, 0);
-        table.set("status", 0, 0);
-        table.set("wins", player.stats?.wins || 0, 0);
-        table.set("losses", player.stats?.losses || 0, 0);
-        table.set("games", player.stats?.games || 0, 0);
-        this._playerTables.set(player.id, table);
-        return player;
-      }
+      const pfx = "kgm:profile:";
+      const id = localStorage.getItem(pfx + "id");
+      if (!id) return null;
+      const username = localStorage.getItem(pfx + "username") || "";
+      const avatarId = localStorage.getItem(pfx + "avatarId") || "👤";
+      const wins = parseInt(localStorage.getItem(pfx + "wins") || "0", 10);
+      const losses = parseInt(localStorage.getItem(pfx + "losses") || "0", 10);
+      const games = parseInt(localStorage.getItem(pfx + "games") || "0", 10);
+
+      // Re-register as RepresentationTable
+      const table = new RepresentationTable(`player:${id}`);
+      table.encodeString("id", id);
+      table.encodeString("username", username);
+      table.encodeString("avatarId", avatarId);
+      table.encode("isAI", 0, HELIX.VOID);
+      table.encode("status", 0, HELIX.VOID);
+      table.encode("wins", wins, HELIX.POINT);
+      table.encode("losses", losses, HELIX.POINT);
+      table.encode("games", games, HELIX.POINT);
+      this._playerTables.set(id, table);
+
+      // Materialize for caller (engine boundary)
+      return this._materializePlayer(id, table);
     } catch (e) { /* silent */ }
     return null;
   },
@@ -149,13 +139,13 @@ const LobbyManifold = {
   // ═══════════════════════════════════════════════════════════════════════
   _initAIPool() {
     this._aiTables = this.AI_NAMES.map((name, i) => {
-      const table = new LobbyRepTable(`ai:${i}`);
-      table.setString("id", `ai_${i}`);
-      table.setString("username", name);
-      table.setString("avatarId", "🤖");
-      table.set("isAI", 1, 0);
-      table.setString("difficulty", i < 3 ? "easy" : i < 6 ? "medium" : "hard");
-      table.set("status", 0, 0);  // 0=available, 2=in_game
+      const table = new RepresentationTable(`ai:${i}`);
+      table.encodeString("id", `ai_${i}`);
+      table.encodeString("username", name);
+      table.encodeString("avatarId", "🤖");
+      table.encode("isAI", 1, HELIX.VOID);
+      table.encodeString("difficulty", i < 3 ? "easy" : i < 6 ? "medium" : "hard");
+      table.encode("status", 0, HELIX.VOID);  // 0=available, 2=in_game
       return table;
     });
   },
@@ -164,10 +154,10 @@ const LobbyManifold = {
     const result = [];
     for (const table of this._aiTables) {
       if (result.length >= count) break;
-      if (Math.round(table.get("status") || 0) === 0) {
-        table.set("status", 2, 0);  // in_game
-        table.setString("difficulty", difficulty);
-        result.push(this._materializePlayer(table.getString("id"), table));
+      if (Math.round(table.decode("status") || 0) === 0) {
+        table.encode("status", 2, HELIX.VOID);  // in_game
+        table.encodeString("difficulty", difficulty);
+        result.push(this._materializePlayer(table.decodeString("id"), table));
       }
     }
     return result;
@@ -175,20 +165,23 @@ const LobbyManifold = {
 
   releaseAI(aiIds) {
     for (const id of aiIds) {
-      const table = this._aiTables.find(t => t.getString("id") === id);
-      if (table) table.set("status", 0, 0);  // available
+      const table = this._aiTables.find(t => t.decodeString("id") === id);
+      if (table) table.encode("status", 0, HELIX.VOID);  // available
     }
   },
 
   // ═══════════════════════════════════════════════════════════════════════
   // ROOM MANAGEMENT — RepresentationTable per room
   // ═══════════════════════════════════════════════════════════════════════
+  /** Generate room code via z-invocation: each char derived from z = x·y */
   _generateCode() {
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     let code = "";
+    const seed = Date.now();
     for (let i = 0; i < 6; i++) {
-      const path = discoverPath(Date.now() + i * 1337, i % 7);
-      const z = Math.abs(evaluatePath(path));
+      // x = time-derived coordinate, y = section-derived coordinate
+      const path = new PathExpression(i % 7, seed * 0.000001 + i * 1.337, (i + 1) * 0.7071);
+      const z = Math.abs(path.z);
       code += chars[Math.floor(z * 1000) % chars.length];
     }
     return code;
@@ -200,32 +193,32 @@ const LobbyManifold = {
     if (!hostTable) return { success: false, error: "Player not found" };
 
     const code = this._generateCode();
-    const table = new LobbyRepTable(`room:${code}`);
+    const table = new RepresentationTable(`room:${code}`);
 
-    table.setString("id", `room_${Date.now()}`);
-    table.setString("code", code);
-    table.setString("hostId", hostId);
-    table.setString("gameId", gameId);
-    table.setString("mode", mode);
-    table.set("maxPlayers", options.maxPlayers || modeConfig.max, 2);
-    table.set("minPlayers", options.minPlayers || modeConfig.min, 2);
-    table.set("status", 0, 2);        // 0=waiting, 1=starting, 2=playing, 3=ended
-    table.set("playerCount", 1, 2);
-    table.set("aiPlayerCount", 0, 2);
-    table.setString("player:0", hostId);
-    table.setString("aiDifficulty", options.aiDifficulty || "medium");
+    table.encodeString("id", `room_${Date.now()}`);
+    table.encodeString("code", code);
+    table.encodeString("hostId", hostId);
+    table.encodeString("gameId", gameId);
+    table.encodeString("mode", mode);
+    table.encode("maxPlayers", options.maxPlayers || modeConfig.max, HELIX.LINE);
+    table.encode("minPlayers", options.minPlayers || modeConfig.min, HELIX.LINE);
+    table.encode("status", 0, HELIX.LINE);        // 0=waiting, 1=starting, 2=playing, 3=ended
+    table.encode("playerCount", 1, HELIX.LINE);
+    table.encode("aiPlayerCount", 0, HELIX.LINE);
+    table.encodeString("player:0", hostId);
+    table.encodeString("aiDifficulty", options.aiDifficulty || "medium");
 
     // Update host status
-    hostTable.setString("currentRoom", code);
-    hostTable.set("status", 1, 0);  // searching
+    hostTable.encodeString("currentRoom", code);
+    hostTable.encode("status", 1, HELIX.VOID);  // searching
 
     // Add AI if required
     let aiPlayers = [];
     if (modeConfig.aiRequired) {
       const aiCount = (options.maxPlayers || modeConfig.max) - 1;
       aiPlayers = this.getAvailableAI(aiCount, options.aiDifficulty || "medium");
-      table.set("aiPlayerCount", aiPlayers.length, 2);
-      aiPlayers.forEach((ai, i) => table.setString(`ai:${i}`, ai.id));
+      table.encode("aiPlayerCount", aiPlayers.length, HELIX.LINE);
+      aiPlayers.forEach((ai, i) => table.encodeString(`ai:${i}`, ai.id));
     }
 
     this._roomTables.set(code, table);
@@ -235,11 +228,11 @@ const LobbyManifold = {
   },
 
   _materializeRoom(code, table) {
-    const playerCount = Math.round(table.get("playerCount") || 0);
-    const aiPlayerCount = Math.round(table.get("aiPlayerCount") || 0);
+    const playerCount = Math.round(table.decode("playerCount") || 0);
+    const aiPlayerCount = Math.round(table.decode("aiPlayerCount") || 0);
     const players = [];
     for (let i = 0; i < playerCount; i++) {
-      const pid = table.getString(`player:${i}`);
+      const pid = table.decodeString(`player:${i}`);
       if (pid) {
         const pt = this._playerTables.get(pid);
         players.push(pt ? this._materializePlayer(pid, pt) : { id: pid, username: pid, avatarId: "👤", isAI: false });
@@ -247,26 +240,26 @@ const LobbyManifold = {
     }
     const aiPlayers = [];
     for (let i = 0; i < aiPlayerCount; i++) {
-      const aid = table.getString(`ai:${i}`);
+      const aid = table.decodeString(`ai:${i}`);
       if (aid) {
-        const at = this._aiTables.find(t => t.getString("id") === aid);
+        const at = this._aiTables.find(t => t.decodeString("id") === aid);
         aiPlayers.push(at ? this._materializePlayer(aid, at) : { id: aid, username: aid, avatarId: "🤖", isAI: true });
       }
     }
 
     const statusMap = { 0: "waiting", 1: "starting", 2: "playing", 3: "ended" };
     return {
-      id: table.getString("id") || "",
-      code: table.getString("code") || code,
-      hostId: table.getString("hostId") || "",
-      gameId: table.getString("gameId") || "",
-      mode: table.getString("mode") || "RANDOM",
+      id: table.decodeString("id") || "",
+      code: table.decodeString("code") || code,
+      hostId: table.decodeString("hostId") || "",
+      gameId: table.decodeString("gameId") || "",
+      mode: table.decodeString("mode") || "RANDOM",
       players,
       aiPlayers,
-      maxPlayers: Math.round(table.get("maxPlayers") || 4),
-      minPlayers: Math.round(table.get("minPlayers") || 2),
-      status: statusMap[Math.round(table.get("status") || 0)] || "waiting",
-      settings: { aiDifficulty: table.getString("aiDifficulty") || "medium" },
+      maxPlayers: Math.round(table.decode("maxPlayers") || 4),
+      minPlayers: Math.round(table.decode("minPlayers") || 2),
+      status: statusMap[Math.round(table.decode("status") || 0)] || "waiting",
+      settings: { aiDifficulty: table.decodeString("aiDifficulty") || "medium" },
     };
   },
 
@@ -277,18 +270,18 @@ const LobbyManifold = {
     if (!table) return { success: false, error: "Room not found" };
     if (!playerTable) return { success: false, error: "Player not found" };
 
-    const status = Math.round(table.get("status") || -1);
+    const status = Math.round(table.decode("status") || -1);
     if (status !== 0) return { success: false, error: "Game already started" };
 
-    const playerCount = Math.round(table.get("playerCount") || 0);
-    const maxPlayers = Math.round(table.get("maxPlayers") || 0);
+    const playerCount = Math.round(table.decode("playerCount") || 0);
+    const maxPlayers = Math.round(table.decode("maxPlayers") || 0);
     if (playerCount >= maxPlayers) return { success: false, error: "Room is full" };
 
-    table.setString(`player:${playerCount}`, playerId);
-    table.set("playerCount", playerCount + 1, 2);
+    table.encodeString(`player:${playerCount}`, playerId);
+    table.encode("playerCount", playerCount + 1, HELIX.LINE);
 
-    playerTable.setString("currentRoom", code);
-    playerTable.set("status", 1, 0);
+    playerTable.encodeString("currentRoom", code);
+    playerTable.encode("status", 1, HELIX.VOID);
 
     this._checkAutoStart(code);
 
@@ -299,10 +292,10 @@ const LobbyManifold = {
   _checkAutoStart(code) {
     const table = this._roomTables.get(code);
     if (!table) return;
-    const playerCount = Math.round(table.get("playerCount") || 0);
-    const aiCount = Math.round(table.get("aiPlayerCount") || 0);
-    const minPlayers = Math.round(table.get("minPlayers") || 2);
-    const status = Math.round(table.get("status") || 0);
+    const playerCount = Math.round(table.decode("playerCount") || 0);
+    const aiCount = Math.round(table.decode("aiPlayerCount") || 0);
+    const minPlayers = Math.round(table.decode("minPlayers") || 2);
+    const status = Math.round(table.decode("status") || 0);
     if ((playerCount + aiCount) >= minPlayers && status === 0) {
       setTimeout(() => this.startGame(code), 1000);
     }
@@ -310,16 +303,16 @@ const LobbyManifold = {
 
   startGame(code) {
     const table = this._roomTables.get(code);
-    if (!table || Math.round(table.get("status") || -1) !== 0) return { success: false };
+    if (!table || Math.round(table.decode("status") || -1) !== 0) return { success: false };
 
-    table.set("status", 2, 2);  // playing
+    table.encode("status", 2, HELIX.LINE);  // playing
 
     // Update player statuses
-    const playerCount = Math.round(table.get("playerCount") || 0);
+    const playerCount = Math.round(table.decode("playerCount") || 0);
     for (let i = 0; i < playerCount; i++) {
-      const pid = table.getString(`player:${i}`);
+      const pid = table.decodeString(`player:${i}`);
       const pt = this._playerTables.get(pid);
-      if (pt) pt.set("status", 2, 0);  // in_game
+      if (pt) pt.encode("status", 2, HELIX.VOID);  // in_game
     }
 
     const room = this._materializeRoom(code, table);
@@ -331,11 +324,11 @@ const LobbyManifold = {
   // ═══════════════════════════════════════════════════════════════════════
   quickMatch(playerId, gameId) {
     for (const [code, table] of this._roomTables) {
-      const status = Math.round(table.get("status") || -1);
-      const mode = table.getString("mode");
-      const gid = table.getString("gameId");
-      const playerCount = Math.round(table.get("playerCount") || 0);
-      const maxPlayers = Math.round(table.get("maxPlayers") || 0);
+      const status = Math.round(table.decode("status") || -1);
+      const mode = table.decodeString("mode");
+      const gid = table.decodeString("gameId");
+      const playerCount = Math.round(table.decode("playerCount") || 0);
+      const maxPlayers = Math.round(table.decode("maxPlayers") || 0);
       if (gid === gameId && status === 0 && mode === "RANDOM" && playerCount < maxPlayers) {
         return this.joinRoom(playerId, code);
       }
@@ -357,34 +350,34 @@ const LobbyManifold = {
     if (!table || !playerTable) return;
 
     // Remove player from room
-    const playerCount = Math.round(table.get("playerCount") || 0);
+    const playerCount = Math.round(table.decode("playerCount") || 0);
     const remaining = [];
     for (let i = 0; i < playerCount; i++) {
-      const pid = table.getString(`player:${i}`);
+      const pid = table.decodeString(`player:${i}`);
       if (pid && pid !== playerId) remaining.push(pid);
     }
 
-    playerTable.setString("currentRoom", "");
-    playerTable.set("status", 0, 0);  // online
+    playerTable.encodeString("currentRoom", "");
+    playerTable.encode("status", 0, HELIX.VOID);  // online
 
     if (remaining.length === 0) {
       // Release AI and delete room
-      const aiCount = Math.round(table.get("aiPlayerCount") || 0);
+      const aiCount = Math.round(table.decode("aiPlayerCount") || 0);
       const aiIds = [];
       for (let i = 0; i < aiCount; i++) {
-        const aid = table.getString(`ai:${i}`);
+        const aid = table.decodeString(`ai:${i}`);
         if (aid) aiIds.push(aid);
       }
       this.releaseAI(aiIds);
       this._roomTables.delete(code);
     } else {
       // Update remaining players
-      remaining.forEach((pid, i) => table.setString(`player:${i}`, pid));
-      table.set("playerCount", remaining.length, 2);
+      remaining.forEach((pid, i) => table.encodeString(`player:${i}`, pid));
+      table.encode("playerCount", remaining.length, HELIX.LINE);
       // Transfer host if needed
-      const hostId = table.getString("hostId");
+      const hostId = table.decodeString("hostId");
       if (hostId === playerId) {
-        table.setString("hostId", remaining[0]);
+        table.encodeString("hostId", remaining[0]);
       }
     }
   },
@@ -404,11 +397,190 @@ const LobbyManifold = {
   }
 };
 
+// ═══════════════════════════════════════════════════════════════════════════
+// SOCKET CONDUIT — Two-labyrinth client-server bridge
+// ═══════════════════════════════════════════════════════════════════════════
+//   Labyrinth A (Encode): Client sends deltas to server
+//   Labyrinth B (Decode): Server broadcasts arrive and materialize locally
+//   When offline: falls back to local-only LobbyManifold operations
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SocketConduit = {
+  /** @type {WebSocket|null} */
+  _ws: null,
+  _token: null,
+  _connected: false,
+  _reconnectTimer: null,
+  _serverUrl: null,
+  _handlers: {},  // event -> [callbacks]
+  _pingInterval: null,
+
+  /**
+   * Connect to the manifold server.
+   * @param {string} url - WebSocket URL (ws://host:port or wss://host:port)
+   */
+  connect(url) {
+    if (this._ws) this.disconnect();
+    this._serverUrl = url;
+
+    try {
+      this._ws = new WebSocket(url);
+    } catch (e) {
+      console.warn('[SocketConduit] WebSocket unavailable, local-only mode');
+      return;
+    }
+
+    this._ws.onopen = () => {
+      this._connected = true;
+      console.log('[SocketConduit] Connected to manifold server');
+      this._emit('connected');
+      // Start heartbeat
+      this._pingInterval = setInterval(() => this.send({ t: 'ping' }), 25000);
+      // Re-auth if we have a token
+      if (this._token) {
+        this.send({ t: 'auth', d: { action: 'validate', token: this._token } });
+      }
+    };
+
+    this._ws.onmessage = (event) => {
+      let msg;
+      try { msg = JSON.parse(event.data); } catch { return; }
+      this._route(msg);
+    };
+
+    this._ws.onclose = () => {
+      this._connected = false;
+      clearInterval(this._pingInterval);
+      console.log('[SocketConduit] Disconnected');
+      this._emit('disconnected');
+      // Auto-reconnect after 3s
+      this._reconnectTimer = setTimeout(() => {
+        if (this._serverUrl) this.connect(this._serverUrl);
+      }, 3000);
+    };
+
+    this._ws.onerror = () => { /* onclose will fire */ };
+  },
+
+  disconnect() {
+    clearTimeout(this._reconnectTimer);
+    clearInterval(this._pingInterval);
+    if (this._ws) {
+      this._ws.onclose = null;
+      this._ws.close();
+      this._ws = null;
+    }
+    this._connected = false;
+  },
+
+  /** Labyrinth A: encode and send */
+  send(msg) {
+    if (this._ws && this._ws.readyState === 1) {
+      this._ws.send(JSON.stringify(msg));
+      return true;
+    }
+    return false;
+  },
+
+  /** Route incoming messages (Labyrinth B: decode) */
+  _route(msg) {
+    switch (msg.t) {
+      case 'welcome':
+        this._emit('welcome', msg.d);
+        break;
+      case 'auth':
+        if (msg.d.action === 'registered' || msg.d.action === 'validated') {
+          this._token = msg.d.token || this._token;
+          this._emit('authenticated', msg.d);
+        } else if (msg.d.action === 'invalid') {
+          this._token = null;
+          this._emit('auth_invalid');
+        }
+        break;
+      case 'room':
+        this._emit('room', msg.d);
+        break;
+      case 'delta':
+        this._emit('delta', msg.d);
+        break;
+      case 'signal':
+        this._emit('signal', msg.d);
+        break;
+      case 'pong':
+        // Heartbeat acknowledged
+        break;
+      case 'error':
+        console.warn('[SocketConduit] Server error:', msg.d?.msg);
+        this._emit('error', msg.d);
+        break;
+    }
+  },
+
+  // ─── Auth Helpers ───────────────────────────────────────────────────
+  register(username, avatarId) {
+    return this.send({ t: 'auth', d: { action: 'register', username, avatarId } });
+  },
+
+  registerGuest() {
+    return this.send({ t: 'auth', d: { action: 'guest' } });
+  },
+
+  // ─── Room Helpers ───────────────────────────────────────────────────
+  createRoom(gameId, mode, options) {
+    return this.send({ t: 'room', d: { action: 'create', gameId, mode, ...options } });
+  },
+
+  joinRoom(code) {
+    return this.send({ t: 'room', d: { action: 'join', code } });
+  },
+
+  leaveRoom() {
+    return this.send({ t: 'room', d: { action: 'leave' } });
+  },
+
+  listRooms() {
+    return this.send({ t: 'room', d: { action: 'list' } });
+  },
+
+  startGame() {
+    return this.send({ t: 'room', d: { action: 'start' } });
+  },
+
+  // ─── Delta Helpers ──────────────────────────────────────────────────
+  sendDelta(key, value) {
+    return this.send({ t: 'delta', d: { key, value } });
+  },
+
+  sendSignal(type, data) {
+    return this.send({ t: 'signal', d: { type, ...data } });
+  },
+
+  // ─── Event System ───────────────────────────────────────────────────
+  on(event, callback) {
+    if (!this._handlers[event]) this._handlers[event] = [];
+    this._handlers[event].push(callback);
+  },
+
+  off(event, callback) {
+    if (!this._handlers[event]) return;
+    this._handlers[event] = this._handlers[event].filter(cb => cb !== callback);
+  },
+
+  _emit(event, data) {
+    const handlers = this._handlers[event];
+    if (handlers) handlers.forEach(cb => cb(data));
+  },
+
+  get connected() { return this._connected; },
+  get token() { return this._token; },
+};
+
 // Export
 if (typeof window !== "undefined") {
   window.LobbyManifold = LobbyManifold;
+  window.SocketConduit = SocketConduit;
 }
 if (typeof module !== "undefined") {
-  module.exports = { LobbyManifold };
+  module.exports = { LobbyManifold, SocketConduit };
 }
 

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KEN'S GAMES — 80s Arcade Manifold Platform</title>
   <link rel="stylesheet" href="lib/fonts/fonts.css">
+  <link rel="stylesheet" href="manifold.css">
   <link rel="stylesheet" href="kensgames.css">
 </head>
 <body>
@@ -21,50 +22,163 @@
   <div class="platform-overlay">
 
     <!-- ═══════════════════════════════════════════════════════════════════ -->
-    <!-- AUTH SCREEN -->
+    <!-- AUTH SCREEN — INSERT COIN -->
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <section id="auth-screen" class="screen active">
-      <div class="logo-container">
-        <div class="drill-logo">◈</div>
-        <h1 class="logo-text">KEN'S GAMES</h1>
-        <p class="tagline">80s Arcade Manifold • z = x · y</p>
+      <!-- Wireframe arcade cabinet silhouette -->
+      <div class="arcade-cabinet-frame">
+        <div class="cabinet-screen-bezel">
+          <div class="logo-container">
+            <div class="logo-scanline"></div>
+            <div class="drill-logo">◈</div>
+            <h1 class="logo-text">KEN'S GAMES</h1>
+            <p class="tagline flicker-slow">━━━ RADICAL ARCADE ZONE ━━━</p>
+            <p class="tagline-sub">EST. 1985 • TOTALLY TUBULAR GAMING</p>
+          </div>
+
+          <div class="insert-coin-prompt">
+            <span class="coin-glyph">🪙</span>
+            <span class="insert-coin-text flicker">INSERT COIN</span>
+          </div>
+        </div>
       </div>
 
-      <div class="auth-card glass-panel">
+      <div class="auth-card glass">
         <div class="profile-setup">
-          <h2>Create Your Identity</h2>
+          <h2 class="auth-title">⊳ ENTER YOUR HANDLE, DUDE ⊲</h2>
           <div class="input-group">
-            <label>Username</label>
-            <input type="text" id="username-input" placeholder="Enter username" maxlength="16">
+            <label>PLAYER NAME</label>
+            <input type="text" id="username-input" placeholder="Type your rad name..." maxlength="16" autocomplete="off" spellcheck="false">
           </div>
-          <div class="avatar-picker">
-            <label>Choose Avatar</label>
-            <div class="avatar-grid" id="avatar-grid"></div>
-          </div>
-          <button class="btn btn-primary" onclick="KensGames.enterPlatform()">
-            ⟐ Enter Ken's Games
+          <button class="btn btn-encode arcade-btn" onclick="KensGames.enterPlatform()">
+            ▶ BUILD YOUR CHARACTER
           </button>
         </div>
 
-        <div class="auth-divider"><span>or</span></div>
-        <button class="btn btn-secondary" onclick="KensGames.guestMode()">👤 Play as Guest</button>
-        <button class="btn btn-secondary" onclick="KensGames.joinByCode()">🎟️ Join Game by Code</button>
+        <div class="auth-divider"><span>— OR —</span></div>
+        <button class="btn btn-ghost arcade-btn" onclick="KensGames.guestMode()">👾 PLAY AS GUEST</button>
+        <button class="btn btn-ghost arcade-btn" onclick="KensGames.joinByCode()">🕹️ JOIN BY CODE</button>
       </div>
 
       <div class="manifold-badge">
         <span class="seed-icon">◇</span>
-        <span>Substrate Seed Architecture • z = x · y</span>
+        <span>POWERED BY MANIFOLD z = x · y</span>
+      </div>
+
+      <div class="high-score-ticker" id="high-score-ticker">
+        ★ HIGH SCORES ★ &nbsp;&nbsp; 1ST — RADICAL KEN 999,999 &nbsp;&nbsp; 2ND — TUBULAR TED 888,888 &nbsp;&nbsp; 3RD — BODACIOUS BOB 777,777 &nbsp;&nbsp; ★ INSERT COIN TO PLAY ★
       </div>
     </section>
 
     <!-- ═══════════════════════════════════════════════════════════════════ -->
-    <!-- LOBBY SCREEN -->
+    <!-- AVATAR BUILDER SCREEN — CHARACTER SELECT -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <section id="avatar-screen" class="screen">
+      <div class="screen-title-bar">
+        <h2 class="screen-title-80s">▶ CHARACTER SELECT ◀</h2>
+        <p class="screen-subtitle-80s">CHOOSE YOUR LOOK, HOTSHOT!</p>
+      </div>
+      <div class="avatar-builder-layout">
+        <div class="avatar-preview-panel glass">
+          <div class="preview-label">PREVIEW</div>
+          <div id="avatar-3d-preview"></div>
+          <div class="avatar-name-display" id="avatar-name-display">PLAYER ONE</div>
+        </div>
+        <div class="avatar-controls-panel glass">
+          <h2 class="avatar-controls-title">⊳ CUSTOMIZE ⊲</h2>
+
+          <div class="ctl-group">
+            <label>Name</label>
+            <input type="text" id="av-name" placeholder="Character name" maxlength="16" oninput="KensGames.onAvatarChange('name',this.value)">
+          </div>
+
+          <div class="ctl-row">
+            <div class="ctl-group ctl-half">
+              <label>Gender</label>
+              <div class="ctl-options" id="av-gender"></div>
+            </div>
+            <div class="ctl-group ctl-half">
+              <label>Body Type</label>
+              <div class="ctl-options" id="av-bodyType"></div>
+            </div>
+          </div>
+
+          <div class="ctl-group">
+            <label>Skin Tone</label>
+            <div class="ctl-swatches" id="av-skinTone"></div>
+          </div>
+
+          <div class="ctl-row">
+            <div class="ctl-group ctl-half">
+              <label>Hair Style</label>
+              <div class="ctl-options" id="av-hairStyle"></div>
+            </div>
+            <div class="ctl-group ctl-half">
+              <label>Hair Color</label>
+              <div class="ctl-swatches" id="av-hairColor"></div>
+            </div>
+          </div>
+
+          <div class="ctl-row">
+            <div class="ctl-group ctl-half">
+              <label>Eye Color</label>
+              <div class="ctl-swatches" id="av-eyeColor"></div>
+            </div>
+            <div class="ctl-group ctl-half">
+              <label>Glasses</label>
+              <div class="ctl-options" id="av-glasses"></div>
+            </div>
+          </div>
+
+          <div class="ctl-row">
+            <div class="ctl-group ctl-half">
+              <label>Top</label>
+              <div class="ctl-options" id="av-topStyle"></div>
+            </div>
+            <div class="ctl-group ctl-half">
+              <label>Top Color</label>
+              <div class="ctl-swatches" id="av-topColor"></div>
+            </div>
+          </div>
+
+          <div class="ctl-row">
+            <div class="ctl-group ctl-half">
+              <label>Bottom</label>
+              <div class="ctl-options" id="av-bottomStyle"></div>
+            </div>
+            <div class="ctl-group ctl-half">
+              <label>Bottom Color</label>
+              <div class="ctl-swatches" id="av-bottomColor"></div>
+            </div>
+          </div>
+
+          <div class="ctl-group">
+            <label>Shoe Color</label>
+            <div class="ctl-swatches" id="av-shoeColor"></div>
+          </div>
+
+          <div class="ctl-group">
+            <label>Personality</label>
+            <div class="ctl-personalities" id="av-personality"></div>
+          </div>
+
+          <div class="avatar-actions">
+            <button class="btn btn-ghost arcade-btn" onclick="KensGames.randomizeAvatar()">🎲 RANDOMIZE</button>
+            <button class="btn btn-encode arcade-btn" onclick="KensGames.confirmAvatar()">▶ ENTER THE ARCADE</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- LOBBY SCREEN — THE ARCADE FLOOR -->
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <section id="lobby-screen" class="screen">
       <header class="platform-header">
-        <div class="header-logo">◈ KEN'S GAMES</div>
+        <div class="header-logo">🕹️ KEN'S ARCADE</div>
         <div class="user-info">
-          <span class="username" id="display-name">Player</span>
+          <span id="connection-status" class="status-offline">📡 OFFLINE</span>
+          <span class="username" id="display-name">PLAYER 1</span>
           <span class="avatar" id="display-avatar">👤</span>
         </div>
       </header>
@@ -73,89 +187,92 @@
       <div class="lobby-hero">
         <div class="lobby-3d-widget" id="lobby-3d-widget"></div>
         <div class="lobby-hero-text">
-          <h2 class="hero-title">The Manifold Arcade</h2>
-          <p class="hero-sub">7-section helix • z = x · y • dimensional substrate</p>
+          <h2 class="hero-title">★ THE ARCADE FLOOR ★</h2>
+          <p class="hero-sub">WELCOME BACK, HOTSHOT! CHOOSE YOUR GAME AND GET RADICAL!</p>
         </div>
       </div>
 
       <!-- Game Selection -->
       <div class="games-section">
-        <h2 class="section-title">🎮 Choose Your Game</h2>
+        <h2 class="section-title">🕹️ CHOOSE YOUR GAME</h2>
         <div class="game-cards" id="game-cards"></div>
       </div>
 
       <!-- Matchmaking Options -->
-      <div class="matchmaking-section glass-panel" id="matchmaking-panel" style="display:none;">
-        <h3 id="selected-game-title">Game</h3>
+      <div class="matchmaking-section glass" id="matchmaking-panel" style="display:none;">
+        <h3 class="match-header" id="selected-game-title">GAME</h3>
         <div class="match-options">
           <button class="match-btn" onclick="KensGames.vsAI()">
             <span class="match-icon">🤖</span>
-            <span class="match-title">vs AI</span>
-            <span class="match-desc">Play with AI opponents</span>
+            <span class="match-title">VS COMPUTER</span>
+            <span class="match-desc">CHALLENGE THE MACHINE</span>
           </button>
           <button class="match-btn" onclick="KensGames.quickMatch()">
             <span class="match-icon">⚡</span>
-            <span class="match-title">Quick Match</span>
-            <span class="match-desc">Find players online</span>
+            <span class="match-title">QUICK MATCH</span>
+            <span class="match-desc">FIND WORTHY OPPONENTS</span>
           </button>
           <button class="match-btn" onclick="KensGames.createPrivate()">
-            <span class="match-icon">🔒</span>
-            <span class="match-title">Private Game</span>
-            <span class="match-desc">Share code with friends</span>
+            <span class="match-icon">🔐</span>
+            <span class="match-title">PRIVATE GAME</span>
+            <span class="match-desc">SHARE SECRET CODE</span>
           </button>
         </div>
         <div class="ai-settings" id="ai-settings" style="display:none;">
-          <label>AI Difficulty</label>
+          <label>DIFFICULTY LEVEL</label>
           <select id="ai-difficulty">
-            <option value="easy">Easy 🟢</option>
-            <option value="medium" selected>Medium 🟡</option>
-            <option value="hard">Hard 🔴</option>
+            <option value="easy">EASY — NOOB MODE 🟢</option>
+            <option value="medium" selected>MEDIUM — GNARLY 🟡</option>
+            <option value="hard">HARD — TOTALLY INSANE 🔴</option>
           </select>
-          <label>Number of AI Players</label>
+          <label>NUMBER OF BOTS</label>
           <select id="ai-count">
-            <option value="1">1 AI</option>
-            <option value="2">2 AI</option>
-            <option value="3" selected>3 AI</option>
+            <option value="1">1 BOT</option>
+            <option value="2">2 BOTS</option>
+            <option value="3" selected>3 BOTS</option>
           </select>
         </div>
       </div>
 
       <!-- Active Rooms -->
       <div class="rooms-section">
-        <h3>🎲 Active Rooms</h3>
+        <h3 class="section-title">📺 ACTIVE GAME ROOMS</h3>
         <div class="room-list" id="room-list">
-          <p class="empty-state">No active rooms. Create one above!</p>
+          <p class="empty-state">NO GAMES IN PROGRESS — BE THE FIRST, DUDE!</p>
         </div>
       </div>
     </section>
 
     <!-- ═══════════════════════════════════════════════════════════════════ -->
-    <!-- GAME ROOM SCREEN -->
+    <!-- GAME ROOM SCREEN — PLAYER STAGING -->
     <!-- ═══════════════════════════════════════════════════════════════════ -->
     <section id="room-screen" class="screen">
       <div class="room-header">
-        <button class="btn-back" onclick="KensGames.leaveRoom()">← Leave</button>
+        <button class="btn-back" onclick="KensGames.leaveRoom()">◀ BAIL OUT</button>
         <div class="room-code-display">
-          <span>Room Code:</span>
+          <span class="room-code-label">SECRET CODE:</span>
           <span class="room-code" id="room-code">XXXXXX</span>
-          <button class="btn-copy" onclick="KensGames.copyCode()">📋</button>
+          <button class="btn-copy" onclick="KensGames.copyCode()" title="Copy code">📋</button>
         </div>
       </div>
       <div class="room-content" id="room-content">
-        <div class="players-panel glass-panel">
-          <h3>👥 Players</h3>
+        <div class="players-panel glass">
+          <h3 class="players-title">👾 PLAYERS READY</h3>
           <div id="room-players"></div>
         </div>
         <div class="room-actions">
-          <button class="btn btn-primary" id="start-btn" onclick="KensGames.startGame()" disabled>
-            ⚡ Start Game
+          <button class="btn btn-encode arcade-btn start-game-btn" id="start-btn" onclick="KensGames.startGame()" disabled>
+            ▶ PRESS START
           </button>
+          <p class="room-hint">WAITING FOR PLAYERS...</p>
         </div>
       </div>
     </section>
   </div>
 
   <script src="lib/three/three.min.js"></script>
+  <script src="manifold-core.js"></script>
+  <script src="avatar/avatar-builder.js"></script>
   <script src="games/game-manifold.js"></script>
   <script src="lobby/lobby-manifold.js"></script>
   <script src="kensgames.js"></script>

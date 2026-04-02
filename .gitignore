@@ -47,6 +47,9 @@ deploy/secrets/
 .manifold-local/
 *.local.json
 
+# Legacy — reference only, not part of active codebase
+legacy/
+
 # Temp / scratch files
 newfile.txt
 

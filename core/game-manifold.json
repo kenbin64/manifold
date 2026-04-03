@@ -1,0 +1,34 @@
+{
+  "version": "0.2.0-dev",
+  "versionId": "v0.2.0-dev-bb9bede8",
+  "parent": null,
+  "dimensions": [
+    "game",
+    "rooms",
+    "players",
+    "board",
+    "cells",
+    "pieces",
+    "turn_order",
+    "globals",
+    "chat",
+    "leaderboard"
+  ],
+  "coordinates": {
+    "game": {
+      "rooms": {},
+      "globals": {
+        "chat": [],
+        "leaderboard": []
+      },
+      "metadata": {
+        "createdAt": 1775255369995,
+        "gameVersion": "1.0.0"
+      }
+    }
+  },
+  "topology": "SaddleField [0°, 90°] at game.board.cells",
+  "checksum": "bb9bede826de23d8f58ef5086bb6931dbecab5f12471dfb5269dd1c97999d554",
+  "compiledAt": 1775255369996,
+  "dimensions_count": 10
+}

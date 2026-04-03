@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Fast-Track Manifold Racer</title>
+  <style>
+    body { margin: 0; background: #000; overflow: hidden; font-family: 'Courier New'; color: #00ff41; }
+    #hud { position: absolute; top: 10px; left: 10px; z-index: 100; }
+    #bot-status { position: absolute; top: 10px; right: 10px; color: #ff9b00; }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    Speed: <span id="speed">0</span> | Lap: <span id="lap">0</span> | ESC: Lobby
+  </div>
+  <div id="bot-status">BOTS ACTIVE</div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    let ws = new WebSocket('ws://localhost:3000');
+    let roomId = new URLSearchParams(window.location.search).get('room') || 'solo';
+    let scene = new THREE.Scene();
+    let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    let renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Diamond gyroid track
+    const trackGeo = new THREE.PlaneGeometry(50, 200, 100, 100);
+    const trackMat = new THREE.ShaderMaterial({
+      uniforms: { time: { value: 0 }, speed: { value: 0 } },
+      wireframe: true,
+      vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: `
+        uniform float time;
+        uniform float speed;
+        varying vec2 vUv;
+        float diamondGyroid(vec3 p) {
+          vec3 dt = vec3((p.x+p.y+p.z)/1.414, (p.y+p.z-p.x)/1.414, (p.z+p.x-p.y)/1.414);
+          float g = sin(dt.x)*cos(dt.y) + sin(dt.y)*cos(dt.z) + sin(dt.z)*cos(dt.x);
+          float s = sin(dt.x*dt.y) * 0.1;
+          return g + s;
+        }
+        void main() {
+          vec3 p = vec3(vUv.x*10.0-5.0, 0.0, speed*0.1 + sin(vUv.y*3.14)*2.0);
+          float d = diamondGyroid(p);
+          vec3 col = d > 0.0 ? vec3(0.0,1.0,0.4) : vec3(0.0,0.8,1.0);
+          gl_FragColor = vec4(col * abs(sin(time + d*5.0)), 0.8);
+        }`
+    });
+    const track = new THREE.Mesh(trackGeo, trackMat);
+    track.rotation.x = -Math.PI / 2;
+    scene.add(track);
+
+    // Player car (Diamond point glow)
+    const carGeo = new THREE.BoxGeometry(1, 0.5, 2);
+    const carMat = new THREE.MeshBasicMaterial({ color: 0x00ff41, wireframe: true });
+    const car = new THREE.Mesh(carGeo, carMat);
+    scene.add(car);
+
+    // Bot cars
+    const bots = [];
+    for (let i = 0; i < 3; i++) {
+      const bot = new THREE.Mesh(carGeo, new THREE.MeshBasicMaterial({ color: 0xff9b00, wireframe: true }));
+      bot.position.set(Math.sin(i)*3, 0, Math.cos(i)*3);
+      scene.add(bot);
+      bots.push(bot);
+    }
+
+    camera.position.set(0, 5, 10);
+    camera.lookAt(0,0,0);
+
+    let speed = 0;
+    let positionZ = 0;
+    const keys = {};
+
+    document.addEventListener('keydown', (e) => keys[e.code] = true);
+    document.addEventListener('keyup', (e) => keys[e.code] = false);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        ws.send(JSON.stringify({type: 'leave', room: roomId}));
+        window.location.href = '../platform/lobby.html';
+      }
+    });
+
+    ws.onopen = () => {
+      ws.send(JSON.stringify({type: 'rejoin', room: roomId}));
+    };
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Controls
+      if (keys['KeyW']) speed = Math.min(speed + 0.1, 2);
+      if (keys['KeyS']) speed = Math.max(speed - 0.1, 0);
+      if (keys['KeyA']) car.rotation.z += 0.05;
+      if (keys['KeyD']) car.rotation.z -= 0.05;
+
+      positionZ += speed * 0.5;
+      car.position.z = positionZ % 200 - 100;
+
+      trackMat.uniforms.time.value += 0.02;
+      trackMat.uniforms.speed.value = speed;
+
+      // Animate bots (gradient flow AI)
+      bots.forEach((bot, i) => {
+        bot.position.z += (speed + 0.5 + Math.sin(Date.now()*0.01 + i) * 0.2) * 0.3;
+        bot.position.x = Math.sin(positionZ * 0.1 + i) * 2;
+        bot.rotation.y = Math.sin(Date.now()*0.005 + i) * 0.5;
+      });
+
+      camera.position.x = car.position.x + Math.sin(car.rotation.z) * 5;
+      camera.position.z = car.position.z - 10;
+      camera.lookAt(car.position);
+
+      document.getElementById('speed').textContent = speed.toFixed(1);
+
+      // WS sync
+      ws.send(JSON.stringify({type: 'update', room: roomId, pos: car.position, rot: car.rotation, speed }));
+
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>

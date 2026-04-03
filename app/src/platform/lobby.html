@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>KensGames Manifold - Neon Lobby</title>
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(45deg, #00ff41, #00d4ff, #9b00ff);
+      font-family: 'Courier New', monospace;
+      color: #00ff41;
+      overflow: hidden;
+    }
+    #lobby {
+      position: absolute;
+      top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center;
+    }
+    .neon-btn {
+      background: transparent; border: 2px solid #00ff41; color: #00ff41; padding: 15px 30px; font-size: 24px; margin: 10px; cursor: pointer;
+      text-shadow: 0 0 5px #00ff41; box-shadow: 0 0 20px #00ff41; transition: all 0.3s;
+    }
+    .neon-btn:hover { box-shadow: 0 0 30px #00ff41; }
+    #match-status { font-size: 18px; margin: 20px; }
+    canvas { position: absolute; top: 0; left: 0; z-index: -1; }
+  </style>
+</head>
+<body>
+  <div id="lobby">
+    <h1>██ MANIFOLD LOBBY ██</h1>
+    <div id="match-status">Searching players...</div>
+    <button class="neon-btn" onclick="joinGame('fast-track')">FAST-TRACK RACER</button>
+    <button class="neon-btn" onclick="joinGame('pong')">DIAMOND PONG</button>
+    <p>ESC to Lobby | Rejoin anytime | Bots if no players (* notified)</p>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    let ws = new WebSocket('ws://localhost:3000');
+    let gameIframe = null;
+    let currentGame = null;
+
+    ws.onopen = () => console.log('Manifold WS ready');
+
+    function joinGame(gameId) {
+      currentGame = gameId;
+      const status = document.getElementById('match-status');
+      status.textContent = 'Matchmaking...';
+
+      ws.send(JSON.stringify({type: 'join', game: gameId}));
+
+      ws.onmessage = (evt) => {
+        const msg = JSON.parse(evt.data);
+        if (msg.type === 'match-ready') {
+          status.textContent = msg.bots ? 'With bots (no players available)*' : 'Live match ready!';
+          loadGame(gameId, msg.roomId);
+        } else if (msg.type === 'rejoin') {
+          loadGame(currentGame, msg.roomId);
+        }
+      };
+    }
+
+    function loadGame(gameId, roomId) {
+      const iframe = document.createElement('iframe');
+      iframe.src = `./games/${gameId}/${gameId}.html?room=${roomId}`;
+      iframe.style.position = 'fixed'; iframe.style.top = '0'; iframe.style.left = '0';
+      iframe.style.width = '100%'; iframe.style.height = '100%'; iframe.style.border = 'none'; iframe.style.zIndex = '1000';
+      document.body.appendChild(iframe);
+      gameIframe = iframe;
+      document.getElementById('lobby').style.opacity = '0.3';
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (gameIframe) {
+          ws.send(JSON.stringify({type: 'leave', room: currentGame}));
+          gameIframe.remove();
+          gameIframe = null;
+          document.getElementById('lobby').style.opacity = '1';
+        }
+      }
+    });
+
+    // Neon BG with Diamond gyroid
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // Diamond gyroid shader (neon glow)
+    const geometry = new THREE.PlaneGeometry(200, 200, 50, 50);
+    const material = new THREE.ShaderMaterial({
+      uniforms: { time: { value: 0 } },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float time;
+        varying vec2 vUv;
+        float gyroid(vec3 p) {
+          float g = sin(p.x)*cos(p.y) + sin(p.y)*cos(p.z) + sin(p.z)*cos(p.x);
+          float s = sin(p.x*p.y)*0.1;
+          return g + s;
+        }
+        void main() {
+          vec3 p = vec3(vUv*10.0 - 5.0, time*0.1);
+          float d = gyroid(p);
+          vec3 col = d > 0.0 ? vec3(0.0,1.0,0.4) : vec3(0.0,0.8,1.0);
+          gl_FragColor = vec4(col * (1.0 - smoothstep(0.0, 0.1, abs(d))), 1.0);
+        }
+      `
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+    camera.position.z = 5;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      material.uniforms.time.value += 0.01;
+      mesh.rotation.x += 0.005; mesh.rotation.y += 0.01;
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>
+

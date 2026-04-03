@@ -12,6 +12,9 @@
 import { SaddleForm } from "../core/geometry/saddle";
 import { SaddleField } from "../core/substrate/saddlefield";
 import { saddleManifold } from "../core/substrate/manifold";
+import { GyroidForm, SchwartzDiamondForm } from "../core/geometry/gyroid";
+import { GyroidField, DiamondField } from "../core/substrate/gyroidfield";
+
 
 /**
  * Game State Manifold
@@ -64,7 +67,8 @@ export interface PlayerPoint {
 export interface BoardPoint {
   readonly cells: Map<string, CellPoint>;  // x:y grid as coordinate space
   readonly pieces: Map<string, PiecePoint>;
-  readonly topology: string;  // Saddle form orientation
+  readonly topology: 'saddle' | 'gyroid' | 'diamond';  // Saddle or gyroid or diamond
+
 }
 
 export interface CellPoint {
@@ -153,6 +157,48 @@ export const createGameManifold = () => {
 
   return gameManifold;
 };
+
+/**
+ * Gyroid game topology: Triply periodic 3D minimal surface.
+ */
+export const createGyroidGameManifold = () => {
+  const boardForm0 = new GyroidForm(0);
+  const boardForm90 = new GyroidForm(Math.PI / 2);
+
+  const boardField = new GyroidField()
+    .place([0, 0, 0], boardForm0)
+    .place([2 * Math.PI, 0, 0], boardForm90)
+    .place([0, 2 * Math.PI, 0], boardForm90.rotated(Math.PI / 4))
+    .place([0, 0, 2 * Math.PI], boardForm0.rotated(Math.PI / 2));
+
+  // Stub 3D manifold; use as scalar field for now
+  return {
+    field: boardField,
+    topology: 'gyroid' as const,
+    scalarAt: (p: VecN) => boardField.scalarAt(p),
+  };
+};
+
+/**
+ * Schwartz Diamond game topology: Cubic primitive Diamond gyroid with z=xy.
+ */
+export const createDiamondGameManifold = () => {
+  const boardForm0 = new SchwartzDiamondForm(0);
+  const boardForm90 = new SchwartzDiamondForm(Math.PI / 2);
+
+  const boardField = new DiamondField()
+    .place([0, 0, 0], boardForm0)
+    .place([2 * Math.PI, 0, 0], boardForm90)
+    .place([0, 2 * Math.PI, 0], boardForm90.rotated(Math.PI / 4))
+    .place([0, 0, 2 * Math.PI], boardForm0.rotated(Math.PI / 2));
+
+  return {
+    field: boardField,
+    topology: 'diamond' as const,
+    scalarAt: (p: VecN) => boardField.scalarAt(p),
+  };
+};
+
 
 /**
  * ───────────────────────────────────────────────────────────────────────────

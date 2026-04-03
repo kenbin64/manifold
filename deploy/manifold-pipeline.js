@@ -24,7 +24,7 @@ const ROOT = path.resolve(__dirname, '..');
 const VPS_HOST = '100.70.142.122';
 const VPS_USER = 'butterfly';
 const VPS_TARGET = `${VPS_USER}@${VPS_HOST}`;
-const REMOTE_MANIFOLD_DIR = '/home/manifold';  // NEW: Manifold-specific directory
+const REMOTE_MANIFOLD_DIR = '/home/butterfly/manifold';  // Use butterfly's home, where they have write permission
 const PACKAGE_NAME = 'manifold-artifact.tar.gz';
 const PACKAGE_PATH = path.join(ROOT, PACKAGE_NAME);
 
@@ -93,7 +93,7 @@ async function pipeline() {
   const requiredAdapters = [
     'server/http-substrate-adapter.ts',
     'server/ws-substrate-adapter.ts',
-    'server/manifold-server.ts',
+    'server/manifold-server.js',
   ];
   for (const adapter of requiredAdapters) {
     const adapterPath = path.join(ROOT, adapter);
@@ -106,19 +106,30 @@ async function pipeline() {
 
   // ── STAGE 3: PACKAGE — Create deployment artifact ──────────────────────
   console.log('\nSTAGE 3: PACKAGE — Creating deployment package...');
-  const packageIncludes = [
+
+  // Simple tar: just include the files we need
+  const tarFiles = [
     'core/game-manifold.json',
-    'core/*.dat',
-    'server/http-substrate-adapter.*',
-    'server/ws-substrate-adapter.*',
-    'server/manifold-server.*',
+    'server/http-substrate-adapter.ts',
+    'server/ws-substrate-adapter.ts',
+    'server/manifold-server.js',
     'server/package.json',
     'package.json',
-  ].join(' ');
+  ];
 
-  run(`tar -czf ${PACKAGE_NAME} ${packageIncludes.split(' ').map(inc => `--exclude=node_modules ${inc}`).join(' ')}`);
+  run(`tar -czf ${PACKAGE_NAME} --exclude=node_modules ${tarFiles.join(' ')}`);
   const packageSize = fs.statSync(PACKAGE_PATH).size;
   log('PACKAGE', `${PACKAGE_NAME} (${(packageSize / 1024).toFixed(1)} KB)`);
+
+  // ── STAGE 3.5: PREPARE — Create remote directory ────────────
+  console.log('\nSTAGE 3.5: PREPARE — Creating remote directory...');
+  const mkdirCmd = `ssh ${VPS_TARGET} "mkdir -p ${REMOTE_MANIFOLD_DIR} && chmod 755 ${REMOTE_MANIFOLD_DIR}"`;
+  const mkdirResult = runSafe(mkdirCmd);
+  if (!mkdirResult.ok) {
+    log('PREPARE', `Warning: mkdir output: ${mkdirResult.out.slice(0, 100)}`);
+  } else {
+    log('PREPARE', `Created ${REMOTE_MANIFOLD_DIR} with write permissions`);
+  }
 
   // ── STAGE 4: TRANSFER — Send to VPS ──────────────────────────────────────
   console.log('\nSTAGE 4: TRANSFER — Sending artifact to VPS...');
@@ -128,10 +139,6 @@ async function pipeline() {
 
   // ── STAGE 5: MOUNT — Extract and mount substrate adapters ───────────────
   console.log('\nSTAGE 5: MOUNT — Mounting substrates on manifold...');
-
-  // Create directory if needed
-  const mkdirCmd = `ssh ${VPS_TARGET} "mkdir -p ${REMOTE_MANIFOLD_DIR}"`;
-  runSafe(mkdirCmd);
 
   // Extract package
   const extractCmd = `ssh ${VPS_TARGET} "cd ${REMOTE_MANIFOLD_DIR} && tar -xzf ${PACKAGE_NAME} && rm ${PACKAGE_NAME}"`;
@@ -165,7 +172,7 @@ async function pipeline() {
   }
 
   // Start server
-  const startCmd = `ssh ${VPS_TARGET} "cd ${REMOTE_MANIFOLD_DIR} && nohup node server/manifold-server.js > manifold.log 2>&1 &"`;
+  const startCmd = `ssh ${VPS_TARGET} "cd ${REMOTE_MANIFOLD_DIR} && MANIFOLD_DIR=${REMOTE_MANIFOLD_DIR} nohup node server/manifold-server.js > manifold.log 2>&1 &"`;
   const startResult = runSafe(startCmd);
   if (!startResult.ok) fail('ACTIVATE', `Start failed: ${startResult.out}`);
   log('ACTIVATE', 'Manifold server started');

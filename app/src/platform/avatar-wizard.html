@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Avatar Wizard - KensGames Manifold</title>
+  <style>
+    body { margin: 0; background: linear-gradient(45deg, #00ff41, #00d4ff, #9b00ff); font-family: 'Courier New', monospace; color: #00ff41; overflow: hidden; }
+    #wizard { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+    .neon-btn { background: transparent; border: 2px solid #00ff41; color: #00ff41; padding: 15px 30px; font-size: 20px; margin: 10px; cursor: pointer; text-shadow: 0 0 5px #00ff41; box-shadow: 0 0 20px #00ff41; }
+    .neon-btn:hover { box-shadow: 0 0 30px #00ff41; }
+    #preview { width: 400px; height: 400px; border: 2px solid #00ff41; margin: 20px auto; }
+    canvas { position: absolute; top: 0; left: 0; z-index: -1; }
+    #save-status { font-size: 18px; margin: 20px; }
+    .slider { width: 200px; margin: 10px; }
+  </style>
+</head>
+<body>
+  <div id="wizard">
+    <h1>██ AVATAR WIZARD ██</h1>
+    <div id="preview"></div>
+    <div>
+      <label>Body: <input class="slider" type="range" id="body" min="0" max="10" value="5"></label><br>
+      <label>Arms: <input class="slider" type="range" id="arms" min="0" max="10" value="5"></label><br>
+      <label>Legs: <input class="slider" type="range" id="legs" min="0" max="10" value="5"></label><br>
+      <label>Head: <input class="slider" type="range" id="head" min="0" max="10" value="5"></label><br>
+      <label>Color Hue: <input class="slider" type="range" id="hue" min="0" max="360" value="180"></label>
+    </div>
+    <button class="neon-btn" onclick="randomize()">RANDOMIZE</button>
+    <button class="neon-btn" onclick="saveAvatar()">SAVE AVATAR</button>
+    <div id="save-status"></div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+    const ws = new WebSocket('ws://localhost:3000');
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(400, 400);
+    document.getElementById('preview').appendChild(renderer.domElement);
+
+    const lights = [];
+    lights[0] = new THREE.DirectionalLight(0xffffff, 1);
+    lights[0].position.set(1, 0, 0).normalize();
+    lights[1] = new THREE.DirectionalLight(0xffffff, 1);
+    lights[1].position.set(-1, -0.5, -0.5).normalize();
+    scene.add(lights[0]);
+    scene.add(lights[1]);
+    scene.add(new THREE.AmbientLight(0x404040));
+
+    let avatarGroup = new THREE.Group();
+    scene.add(avatarGroup);
+    camera.position.z = 5;
+
+    const sliders = ['body', 'arms', 'legs', 'head'];
+    let hue = 180;
+
+    function updateAvatar() {
+      avatarGroup.clear();
+      sliders.forEach((part, i) => {
+        const value = parseFloat(document.getElementById(part).value);
+        const geo = new THREE.SphereGeometry(value * 0.2 + 0.5, 16, 16);
+        const mat = new THREE.MeshPhongMaterial({
+          color: new THREE.Color().setHSL(hue/360, 0.8, 0.6),
+          wireframe: true
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.y = 2 - i * 0.8;
+        avatarGroup.add(mesh);
+      });
+      const medGeo = new THREE.TorusGeometry(0.3, 0.1, 8, 32);
+      const medMat = new THREE.MeshPhongMaterial({ color: 0xffff00, wireframe: true, emissive: 0x444400 });
+      const medallion = new THREE.Mesh(medGeo, medMat);
+      medallion.position.y = 3;
+      medallion.rotation.x = Math.PI / 2;
+      avatarGroup.add(medallion);
+    }
+
+    sliders.forEach(id => document.getElementById(id).oninput = updateAvatar);
+    document.getElementById('hue').oninput = (e) => { hue = parseFloat(e.target.value); updateAvatar(); };
+
+    window.randomize = () => {
+      sliders.forEach(id => document.getElementById(id).value = Math.random()*10);
+      document.getElementById('hue').value = Math.random()*360;
+      updateAvatar();
+    };
+
+    window.saveAvatar = () => {
+      const avatar = { body: document.getElementById('body').value, arms: document.getElementById('arms').value, legs: document.getElementById('legs').value, head: document.getElementById('head').value, hue: hue };
+      ws.send(JSON.stringify({type: 'save-avatar', avatar}));
+      document.getElementById('save-status').textContent = 'Avatar saved! Back to lobby...';
+      setTimeout(() => window.location.href = 'lobby.html', 2000);
+    };
+
+    ws.onopen = () => ws.send(JSON.stringify({type: 'load-avatar'}));
+    ws.onmessage = (evt) => {
+      const msg = JSON.parse(evt.data);
+      if (msg.type === 'avatar') {
+        Object.keys(msg.avatar).forEach(key => document.getElementById(key).value = msg.avatar[key]);
+        hue = msg.avatar.hue;
+        document.getElementById('hue').value = hue;
+        updateAvatar();
+      }
+    };
+
+    function animate() {
+      requestAnimationFrame(animate);
+      avatarGroup.rotation.y += 0.01;
+      renderer.render(scene, camera);
+    }
+    updateAvatar();
+    animate();
+  </script>
+</body>
+</html>

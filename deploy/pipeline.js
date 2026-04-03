@@ -170,7 +170,14 @@ async function pipeline() {
   // Ensure remote Node/npm availability and install dependencies.
   const remoteNpmCheck = runSafe(`ssh ${VPS_TARGET} "command -v npm || true"`);
   if (!remoteNpmCheck.ok || !remoteNpmCheck.out.trim()) {
-    fail(6, `Remote npm not found on ${VPS_TARGET}. Please install Node.js/npm or adjust PATH.`);
+    console.log('\n⚠️  Node.js/npm not found on VPS. Install system-wide:');
+    console.log('   ssh ' + VPS_TARGET);
+    console.log('   sudo apt update');
+    console.log('   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -');
+    console.log('   sudo apt install -y nodejs');
+    console.log('   node --version && npm --version');
+    console.log('   Then re-run: npm run deploy\n');
+    fail(6, `Remote npm not found on ${VPS_TARGET}. Please install Node.js system-wide first.`);
   }
 
   const remoteInstall = runSafe(`ssh ${VPS_TARGET} "cd ${REMOTE_DIR}/server && npm install --omit=dev"`);

@@ -1,0 +1,29 @@
+name: New MCP server
+version: 0.0.1
+schema: v1
+models:
+  - title: Llama 3.1 (Local)
+    provider: ollama
+    model: llama3.1
+    apiBase: http://127.0.0.1:11434
+  - name: Qwen 2.5 Coder 7b
+    provider: ollama
+    model: qwen-coder2.5-7b
+  - name: Hermes 3 Llama 3.1 70B
+    provider: ollama
+    model: Hermes-3-Llama-3.1-70B
+mcpServers:
+  - name: Butterfly-Remote
+    command: ssh
+    args:
+      - butterfly@100.70.142.122
+      - /home/butterfly/butterfly-mcp/venv/bin/python3
+      - -u
+      - /home/butterfly/butterfly-mcp/server.py
+agents:
+  - name: Private-Dev
+    model: Llama 3.1 (Local)
+    systemPrompt: You are a private AI assistant with access to VPS tools.
+    tools:
+      - name: Butterfly-Remote
+

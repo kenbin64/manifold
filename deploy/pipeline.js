@@ -107,8 +107,8 @@ async function pipeline() {
   if (!serverInstall.ok) fail(2, `server npm install failed`);
   log(2, 'Server dependencies installed');
 
-  // Run tests if available
-  const testResult = runSafe('npm test -- --passWithNoTests 2>&1');
+  // Run tests if available (run in band to avoid haste collisions in nested package manifests)
+  const testResult = runSafe('npm test -- --runInBand --passWithNoTests 2>&1');
   if (!testResult.ok) {
     log(2, 'Tests failed — aborting deployment', false);
     console.log(testResult.out.split('\n').slice(-10).join('\n'));
@@ -137,11 +137,11 @@ async function pipeline() {
   // ── §4 PLANE — Package ─────────────────────────────────────────────
   console.log('\n§4 PLANE — Packaging...');
   const includes = [
-    'server/', 'app/src/platform/', 'package.json',
+    'server', 'app/src/platform', 'package.json',
   ].join(' ');
   const excludes = [
     '--exclude=node_modules', '--exclude=.git', '--exclude=*.test.*',
-    '--exclude=.deploy-log.jsonl', '--exclude=deploy/',
+    '--exclude=.deploy-log.jsonl', '--exclude=deploy',
   ].join(' ');
   run(`tar -czf ${PACKAGE_NAME} ${excludes} ${includes}`);
   const size = fs.statSync(PACKAGE_PATH).size;
@@ -167,10 +167,36 @@ async function pipeline() {
   if (!extractResult.ok) fail(6, `Extract failed: ${extractResult.out}`);
   log(6, 'Extracted deployment package');
 
-  // Install production dependencies on remote
+  // Ensure remote Node/npm availability and install dependencies.
+  const remoteNpmCheck = runSafe(`ssh ${VPS_TARGET} "command -v npm || true"`);
+  if (!remoteNpmCheck.ok || !remoteNpmCheck.out.trim()) {
+    fail(6, `Remote npm not found on ${VPS_TARGET}. Please install Node.js/npm or adjust PATH.`);
+  }
+
   const remoteInstall = runSafe(`ssh ${VPS_TARGET} "cd ${REMOTE_DIR}/server && npm install --omit=dev"`);
-  if (!remoteInstall.ok) fail(6, `Remote npm install failed`);
+  if (!remoteInstall.ok) {
+    log(6, 'Remote npm install failed', false);
+    console.log(remoteInstall.out);
+    fail(6, `Remote npm install failed`);
+  }
   log(6, 'Remote dependencies installed');
+
+  // Obtain SSL certificate with Let's Encrypt
+  const certbotCheck = runSafe(`ssh ${VPS_TARGET} "command -v certbot || true"`);
+  if (!certbotCheck.ok || !certbotCheck.out.trim()) {
+    const installCertbot = runSafe(`ssh ${VPS_TARGET} "apt update && apt install -y certbot"`);
+    if (!installCertbot.ok) fail(6, `Failed to install certbot: ${installCertbot.out}`);
+    log(6, 'Certbot installed');
+  }
+
+  const certCmd = `ssh ${VPS_TARGET} "certbot certonly --standalone --agree-tos --email admin@kensgames.com -d kensgames.com -d www.kensgames.com --non-interactive"`;
+  const certResult = runSafe(certCmd);
+  if (!certResult.ok) {
+    log(6, 'SSL certificate obtain failed — continuing with HTTP only', false);
+    console.log(certResult.out);
+  } else {
+    log(6, 'SSL certificate obtained');
+  }
 
   // Start server
   const startCmd = `ssh ${VPS_TARGET} "cd ${REMOTE_DIR} && (pm2 start server/index.js --name manifold-server 2>/dev/null || nohup node server/index.js > server.log 2>&1 &)"`;
@@ -178,9 +204,12 @@ async function pipeline() {
   if (!startResult.ok) fail(6, `Start failed: ${startResult.out}`);
   log(6, 'Server started');
 
-  // Health check — wait a moment then verify
+  // Health check — wait a moment then verify (use HTTPS if certs available)
   await new Promise(r => setTimeout(r, 2000));
-  const healthCheck = runSafe(`ssh ${VPS_TARGET} "curl -sf http://localhost:3000/ > /dev/null && echo ok || echo fail"`);
+  const healthCheckCmd = certResult.ok
+    ? `ssh ${VPS_TARGET} "curl -sf https://localhost:3443/ > /dev/null && echo ok || echo fail"`
+    : `ssh ${VPS_TARGET} "curl -sf http://localhost:3000/ > /dev/null && echo ok || echo fail"`;
+  const healthCheck = runSafe(healthCheckCmd);
   if (!healthCheck.ok || !healthCheck.out.includes('ok')) {
     log(6, 'Health check FAILED — server may not be responding', false);
   } else {

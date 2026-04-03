@@ -14,6 +14,7 @@
 'use strict';
 
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const { WebSocketServer } = require('ws');
@@ -22,8 +23,11 @@ const { AuthManifold } = require('./auth-manifold');
 
 // ─── Configuration ──────────────────────────────────────────────────────
 const PORT = parseInt(process.env.PORT || '3000', 10);
+const SSL_PORT = parseInt(process.env.SSL_PORT || '3443', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 const STATIC_ROOT = path.resolve(__dirname, '..', 'app', 'src', 'platform');
+const CERT_PATH = process.env.CERT_PATH || '/etc/letsencrypt/live/kensgames.com/fullchain.pem';
+const KEY_PATH = process.env.KEY_PATH || '/etc/letsencrypt/live/kensgames.com/privkey.pem';
 
 // ─── MIME Types (minimal set — no bloat) ────────────────────────────────
 const MIME = {
@@ -94,38 +98,99 @@ function serveStatic(req, res) {
 
 // ─── Server Bootstrap ───────────────────────────────────────────────────
 
-const server = http.createServer(serveStatic);
-const wss = new WebSocketServer({ server });
+// Create HTTP server (redirect to HTTPS)
+const httpServer = http.createServer((req, res) => {
+  if (req.headers.host) {
+    res.writeHead(301, { Location: `https://${req.headers.host}${req.url}` });
+    res.end();
+  } else {
+    res.writeHead(400);
+    res.end('Bad Request');
+  }
+});
 
-// Wire WebSocket connections into ManifoldSocket (Labyrinth A entry)
-wss.on('connection', (ws, req) => {
+// Create HTTPS server
+let httpsServer;
+try {
+  const sslOptions = {
+    cert: fs.readFileSync(CERT_PATH),
+    key: fs.readFileSync(KEY_PATH),
+  };
+  httpsServer = https.createServer(sslOptions, serveStatic);
+} catch (err) {
+  console.error('SSL certificates not found, running HTTP only:', err.message);
+  httpsServer = null;
+}
+
+// WebSocket servers
+const wssHttp = new WebSocketServer({ server: httpServer });
+const wssHttps = httpsServer ? new WebSocketServer({ server: httpsServer }) : null;
+
+// Wire WebSocket connections
+wssHttp.on('connection', (ws, req) => {
   ManifoldSocket.onConnection(ws);
 });
+
+if (wssHttps) {
+  wssHttps.on('connection', (ws, req) => {
+    ManifoldSocket.onConnection(ws);
+  });
+}
 
 // Periodic cleanup: purge stale auth tokens (delta cache maintenance)
 setInterval(() => {
   AuthManifold.purge();
 }, 60 * 60 * 1000); // Every hour
 
-// Start
-server.listen(PORT, HOST, () => {
-  console.log(`
+// Start servers
+httpServer.listen(PORT, HOST, () => {
+  console.log(`HTTP redirect server listening on http://${HOST}:${PORT}`);
+});
+
+if (httpsServer) {
+  httpsServer.listen(SSL_PORT, HOST, () => {
+    console.log(`
 ╔═══════════════════════════════════════════════════════════════════════╗
 ║              KENSGAMES MANIFOLD SERVER                              ║
 ║  ─────────────────────────────────────────────────────────────────   ║
 ║  Gyroid Topology: sin(x)cos(y) + sin(y)cos(z) + sin(z)cos(x) = 0  ║
 ║  Two Labyrinths: A (Encode) | B (Decode) | Surface (Delta Cache)   ║
 ║  ─────────────────────────────────────────────────────────────────   ║
-║  HTTP:  http://${HOST}:${PORT}                                      ║
-║  WS:    ws://${HOST}:${PORT}                                        ║
-║  Static: ${STATIC_ROOT}
+║  HTTPS: https://${HOST}:${SSL_PORT}                                 ║
+║  WSS:   wss://${HOST}:${SSL_PORT}                                   ║
+║  HTTP Redirect: http://${HOST}:${PORT} → HTTPS                     ║
+║  Static: ${STATIC_ROOT}                                             ║
 ║  ─────────────────────────────────────────────────────────────────   ║
 ║  Minimum material. Maximum strength. Maximum surface area.          ║
 ╚═══════════════════════════════════════════════════════════════════════╝
+    `);
+  });
+} else {
+  console.log(`
+╔═══════════════════════════════════════════════════════════════════════╗
+║              KENSGAMES MANIFOLD SERVER (HTTP ONLY)                  ║
+║  ─────────────────────────────────────────────────────────────────   ║
+║  Gyroid Topology: sin(x)cos(y) + sin(y)cos(z) + sin(z)cos(x) = 0  ║
+║  Two Labyrinths: A (Encode) | B (Decode) | Surface (Delta Cache)   ║
+║  ─────────────────────────────────────────────────────────────────   ║
+║  HTTP:  http://${HOST}:${PORT}                                      ║
+║  WS:    ws://${HOST}:${PORT}                                        ║
+║  Static: ${STATIC_ROOT}                                             ║
+║  ─────────────────────────────────────────────────────────────────   ║
+║  SSL certificates not found. Install certs for HTTPS.               ║
+╚═══════════════════════════════════════════════════════════════════════╝
   `);
-});
+}
 
 // Graceful shutdown
-process.on('SIGTERM', () => { server.close(); process.exit(0); });
-process.on('SIGINT', () => { server.close(); process.exit(0); });
+process.on('SIGTERM', () => {
+  httpServer.close();
+  if (httpsServer) httpsServer.close();
+  process.exit(0);
+});
+process.on('SIGINT', () => {
+  httpServer.close();
+  if (httpsServer) httpsServer.close();
+  process.exit(0);
+});
 

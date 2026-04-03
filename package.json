@@ -9,7 +9,9 @@
     "test": "jest",
     "dev": "ts-node --watch app/src/index.ts",
     "server": "node server/index.js",
-    "deploy": "node deploy/pipeline.js"
+    "deploy": "node deploy/pipeline.js",
+    "compile-manifold": "ts-node scripts/compile-manifold.ts",
+    "deploy-manifold": "node deploy/manifold-pipeline.js"
   },
   "dependencies": {
     "@types/three": "^0.183.1",

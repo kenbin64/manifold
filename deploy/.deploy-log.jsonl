@@ -1,3 +1,4 @@
 {"stage":"LINE","status":"FAILED","reason":"Tests did not pass","ts":"2026-04-03T04:56:43.158Z"}
 {"stage":"UNKNOWN","status":"ERROR","reason":"Command failed: tar -czf manifold-deploy.tar.gz --exclude=node_modules --exclude=.git --exclude=*.test.* --exclude=.deploy-log.jsonl --exclude=deploy/ server/ app/src/platform/ package.json\ntar: ateyInstall=C:\\Progr????\u0002: No such file or directory\r\ntar: : Couldn't visit directory: No such file or directory\r\ntar: Error exit delayed from previous errors.\r\n","ts":"2026-04-03T04:58:03.259Z"}
 {"stage":"WHOLE","status":"FAILED","reason":"Remote npm install failed","ts":"2026-04-03T04:59:18.377Z"}
+{"stage":"WHOLE","status":"FAILED","reason":"Remote npm not found on butterfly@100.70.142.122. Please install Node.js/npm or adjust PATH.","ts":"2026-04-03T05:02:33.240Z"}

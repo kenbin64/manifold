@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrickBreaker 3D - Multiplayer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./assets/css/style.css">
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+    <canvas id="brandingCanvas"></canvas>
+
+    <div id="titleBanner">
+        <div id="gameTitle">BRICKBREAKER3D</div>
+    </div>
+    <div id="subtitleBanner">
+        <div id="gameSubtitle">Manifold Audio Edition</div>
+    </div>
+
+    <div id="hud">
+        <div id="score"><span class="hud-label">SCORE</span><span class="hud-value">0</span></div>
+        <div id="lives"><span class="hud-label">LIVES</span><span class="hud-value">5</span></div>
+        <div id="level"><span class="hud-label">LEVEL</span><span class="hud-value">1</span></div>
+        <div id="bricksLeft"><span class="hud-label">BRICKS</span><span class="hud-value">0</span></div>
+        <div id="energy"><span class="hud-label">SPEED</span><span class="hud-value">0</span></div>
+    </div>
+
+    <div id="poweredBy">POWERED BY <span>BUTTERFLYFX</span></div>
+
+    <div id="audioStatus">
+        <div style="font-weight: bold; margin-bottom: 10px;">🔊 Audio Controls</div>
+        <div style="margin-bottom: 8px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" id="musicToggle" checked style="cursor: pointer; width: 16px; height: 16px;">
+                <span>Music</span>
+            </label>
+        </div>
+        <div style="margin-bottom: 12px; padding-left: 24px;">
+            <input type="range" id="musicVolume" min="0" max="100" value="30" style="width: 120px; cursor: pointer;">
+            <span id="musicVolumeLabel" style="font-size: 11px; margin-left: 8px;">30%</span>
+        </div>
+        <div style="margin-bottom: 8px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                <input type="checkbox" id="sfxToggle" checked style="cursor: pointer; width: 16px; height: 16px;">
+                <span>Sound FX</span>
+            </label>
+        </div>
+        <div style="padding-left: 24px;">
+            <input type="range" id="sfxVolume" min="0" max="100" value="70" style="width: 120px; cursor: pointer;">
+            <span id="sfxVolumeLabel" style="font-size: 11px; margin-left: 8px;">70%</span>
+        </div>
+    </div>
+
+    <!-- Three.js -->
+    <script src="../../lib/three/three.min.js"></script>
+
+    <!-- Authentication & Admin -->
+    <script src="./assets/js/auth.js"></script>
+    <script src="./assets/js/admin.js"></script>
+
+    <!-- Game Menu -->
+    <div id="gameMenu" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                background: rgba(0,0,0,0.98); padding: 50px; border: 3px solid #00ffcc;
+                border-radius: 15px; text-align: center; z-index: 1000; font-family: Orbitron;
+                box-shadow: 0 0 40px rgba(0,255,204,0.5); display: none;">
+        <h1 style="color: #00ffcc; margin-bottom: 10px; text-shadow: 0 0 30px rgba(0,255,204,0.8);
+                  font-size: 48px; letter-spacing: 3px;">BRICKBREAKER 3D</h1>
+        <p style="color: #00ff88; margin-bottom: 10px; font-size: 16px; letter-spacing: 2px;">
+            MANIFOLD AUDIO EDITION - MULTIPLAYER
+        </p>
+
+        <div id="userDisplay" style="color: #00ffcc; margin-bottom: 30px; font-size: 14px;
+                                     padding: 15px; background: rgba(0,255,204,0.1);
+                                     border-radius: 8px; border: 1px solid #00ffcc;">
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px;">
+            <button onclick="launchSinglePlayer()"
+                    style="padding: 15px 40px; font-size: 18px; background: linear-gradient(90deg, #00ffcc, #00ff88);
+                           color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
+                           transition: all 0.3s; letter-spacing: 2px; font-family: Orbitron;"
+                    onmouseover="this.style.boxShadow='0 0 30px rgba(0,255,204,0.8)'"
+                    onmouseout="this.style.boxShadow='none'">
+                1 PLAYER vs BOTS
+            </button>
+
+            <button onclick="launchPrivateGame(2)"
+                    style="padding: 15px 40px; font-size: 18px; background: linear-gradient(90deg, #00ff88, #8a2be2);
+                           color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
+                           transition: all 0.3s; letter-spacing: 2px; font-family: Orbitron;"
+                    onmouseover="this.style.boxShadow='0 0 30px rgba(0,255,136,0.8)'"
+                    onmouseout="this.style.boxShadow='none'">
+                2 PLAYER GAME
+            </button>
+
+            <button onclick="launchPrivateGame(3)"
+                    style="padding: 15px 40px; font-size: 18px; background: linear-gradient(90deg, #ffff00, #8a2be2);
+                           color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
+                           transition: all 0.3s; letter-spacing: 2px; font-family: Orbitron;"
+                    onmouseover="this.style.boxShadow='0 0 30px rgba(255,255,0,0.8)'"
+                    onmouseout="this.style.boxShadow='none'">
+                3 PLAYER GAME
+            </button>
+
+            <button onclick="launchPrivateGame(4)"
+                    style="padding: 15px 40px; font-size: 18px; background: linear-gradient(90deg, #8a2be2, #ff00ff);
+                           color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
+                           transition: all 0.3s; letter-spacing: 2px; font-family: Orbitron;"
+                    onmouseover="this.style.boxShadow='0 0 30px rgba(138,43,226,0.8)'"
+                    onmouseout="this.style.boxShadow='none'">
+                4 PLAYER GAME
+            </button>
+
+            <button onclick="launchMatchmaker()"
+                    style="padding: 15px 40px; font-size: 18px; background: linear-gradient(90deg, #ff6b6b, #00ffcc);
+                           color: #000; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
+                           transition: all 0.3s; letter-spacing: 2px; font-family: Orbitron;"
+                    onmouseover="this.style.boxShadow='0 0 30px rgba(255,107,107,0.8)'"
+                    onmouseout="this.style.boxShadow='none'">
+                🔄 MATCHMAKER
+            </button>
+        </div>
+
+        <button onclick="handleLogout()"
+                style="width: 100%; padding: 12px; background: rgba(100,100,100,0.5); color: #aaa;
+                       border: none; border-radius: 5px; cursor: pointer; font-family: Orbitron;">
+            LOGOUT
+        </button>
+
+        <p style="color: #666; font-size: 12px; margin-top: 20px;">
+            LOWEST SCORE LOSES | LAST PADDLE STANDING WINS<br>
+            <span style="font-size: 10px;">Press Ctrl+Shift+A for admin panel</span>
+        </p>
+    </div>
+
+    <!-- Game scripts -->
+    <script src="./assets/js/multiplayer.js"></script>
+    <script src="./assets/js/script.js"></script>
+    <script>
+        function updateUserDisplay() {
+            const user = authSystem.getCurrentUser();
+            if (user) {
+                document.getElementById('userDisplay').innerHTML = `
+                    <strong style="font-size: 18px;">${user.avatar.emoji} ${user.username}</strong><br>
+                    <span style="font-size: 12px; color: #00ff88;">
+                        Wins: ${user.stats.gamesWon} | Best Score: ${user.stats.bestScore}
+                    </span>
+                `;
+            }
+        }
+
+        function showGameMenu() {
+            document.getElementById('gameMenu').style.display = 'block';
+            updateUserDisplay();
+        }
+
+        function hideGameMenu() {
+            document.getElementById('gameMenu').style.display = 'none';
+        }
+
+        function launchSinglePlayer() {
+            hideGameMenu();
+            startGame('singleplayer', 1);
+        }
+
+        function launchPrivateGame(playerCount) {
+            if (!authSystem.isLoggedIn()) {
+                alert('Please login to play multiplayer');
+                return;
+            }
+            hideGameMenu();
+            startGame('private_game', playerCount, true);
+        }
+
+        function launchMatchmaker() {
+            if (!authSystem.isLoggedIn()) {
+                alert('Please login to play multiplayer');
+                return;
+            }
+            hideGameMenu();
+            startGame('matchmaker', 2 + Math.floor(Math.random() * 3), true);
+        }
+
+        function handleLogout() {
+            authSystem.logout();
+            showAuthScreen();
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>TheConduit ∴ ManifoldAI</title>
+<style>
+  :root {
+    --bg:       #0a0a0a;
+    --surface:  #111;
+    --border:   #2a2a2a;
+    --gold:     #c9a84c;
+    --cyan:     #00ffe0;
+    --text:     #e8e4d8;
+    --muted:    #666;
+    --green:    #1a3a2a;
+    --radius:   6px;
+    --font:     'Courier New', Courier, monospace;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); }
+
+  /* ── Header ── */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--gold);
+  }
+  .logo { font-size: 1.15rem; color: var(--gold); letter-spacing: 2px; font-weight: bold; }
+  .logo span { color: var(--cyan); }
+  .tagline { font-size: 0.7rem; color: var(--muted); letter-spacing: 1px; }
+  .badge {
+    font-size: 0.65rem; color: var(--cyan); border: 1px solid var(--cyan);
+    padding: 3px 8px; border-radius: 20px; letter-spacing: 1px;
+  }
+
+  /* ── Layout ── */
+  .workspace {
+    display: flex; flex-direction: column;
+    height: calc(100vh - 57px);
+    max-width: 960px; margin: 0 auto;
+    padding: 20px 20px 0;
+    gap: 12px;
+  }
+
+  /* ── Panels ── */
+  .panel { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .panel-label {
+    font-size: 0.65rem; color: var(--gold); letter-spacing: 2px;
+    text-transform: uppercase; margin-bottom: 6px;
+  }
+  .panel-body {
+    flex: 1; min-height: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow-y: auto;
+    padding: 14px 16px;
+    font-size: 0.82rem;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .panel-body.response-box { border-color: #1a3a38; color: var(--cyan); }
+
+  /* ── Messages ── */
+  .msg { margin-bottom: 14px; }
+  .msg-role { font-size: 0.6rem; color: var(--gold); letter-spacing: 1px; margin-bottom: 3px; }
+  .msg-role.ai { color: var(--cyan); }
+  .msg-content { color: var(--text); }
+  .msg-content.ai { color: #b8fff5; }
+
+  /* Markdown-like code blocks */
+  code { background: #1a1a1a; border-radius: 3px; padding: 1px 5px; color: var(--cyan); }
+  pre  { background: #111; border: 1px solid var(--border); border-radius: 4px;
+         padding: 10px; overflow-x: auto; margin: 6px 0; }
+  pre code { background: none; padding: 0; }
+
+  /* ── Input row ── */
+  .input-row {
+    display: flex; gap: 8px;
+    padding: 12px 0 16px;
+  }
+  textarea {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 0.82rem;
+    padding: 10px 12px;
+    resize: none;
+    height: 64px;
+    outline: none;
+    transition: border-color .2s;
+  }
+  textarea:focus { border-color: var(--gold); }
+  textarea::placeholder { color: var(--muted); }
+
+  button#send-btn {
+    background: var(--gold);
+    color: #0a0a0a;
+    font-family: var(--font);
+    font-size: 0.8rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+    border: none;
+    border-radius: var(--radius);
+    padding: 0 20px;
+    cursor: pointer;
+    transition: opacity .15s;
+    white-space: nowrap;
+  }
+  button#send-btn:disabled { opacity: .4; cursor: default; }
+  button#send-btn:hover:not(:disabled) { opacity: .85; }
+
+  #clear-btn {
+    background: none; border: 1px solid var(--border);
+    color: var(--muted); border-radius: var(--radius);
+    font-family: var(--font); font-size: 0.75rem;
+    padding: 0 12px; cursor: pointer; transition: border-color .2s;
+  }
+  #clear-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+  /* ── Spinner ── */
+  .thinking { color: var(--cyan); font-style: italic; font-size: 0.78rem; }
+  .dot-anim::after {
+    content: ''; animation: dots 1.2s infinite;
+  }
+  @keyframes dots {
+    0%   { content: '.'; }
+    33%  { content: '..'; }
+    66%  { content: '...'; }
+  }
+
+  /* ── OQ callout ── */
+  .oq-block {
+    background: #131f1b; border-left: 3px solid var(--cyan);
+    padding: 6px 10px; border-radius: 0 4px 4px 0;
+    font-size: 0.78rem; color: var(--cyan); margin-bottom: 8px;
+  }
+  .oq-label { font-size: 0.6rem; letter-spacing: 1px; color: var(--gold); margin-bottom: 2px; }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center; font-size: 0.6rem; color: var(--muted);
+    padding: 6px; border-top: 1px solid var(--border); margin-top: 0;
+  }
+
+  @media (max-width: 600px) {
+    .workspace { padding: 10px 10px 0; }
+    .tagline { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">THE<span>CONDUIT</span> ∴</div>
+    <div class="tagline">z = x · y &nbsp;|&nbsp; Manifold Reasoning Engine &nbsp;|&nbsp; Public Instance</div>
+  </div>
+  <div class="badge">SANDBOXED · PUBLIC</div>
+</header>
+
+<div class="workspace">
+
+  <div class="panel" style="flex:2">
+    <div class="panel-label">▸ Conversation</div>
+    <div class="panel-body" id="chat-log">
+      <div class="msg">
+        <div class="msg-role ai">MANIFOLDAI</div>
+        <div class="msg-content ai">Most AI systems have a problem you've probably felt — they answer the question you typed, not the question you actually needed. They retrieve, they pattern-match, they hedge. You get a confident-sounding answer shaped by whatever was popular on the internet, not by what is true or useful to you right now.
+
+TheConduit was built around a different idea.
+
+Before I respond, I examine what you're really trying to solve. I identify the gaps in how the question was framed, then work from the strongest possible version of it. You get an answer built from the right foundation — not a shortcut to the nearest cached result.
+
+This matters because most problems that feel hard aren't hard at their core. They're hard because they were asked from the wrong angle. Fix the angle and the answer becomes clear.
+
+Ask me anything — a technical problem, a decision you're stuck on, something you can't quite articulate yet. Start wherever you are.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" style="flex:1.2">
+    <div class="panel-label">▸ AI Response</div>
+    <div class="panel-body response-box" id="response-box">Awaiting traversal…</div>
+  </div>
+
+  <div class="input-row">
+    <textarea id="user-input" placeholder="Enter your question — I will optimise it before reasoning…" rows="2"></textarea>
+    <button id="clear-btn" title="Clear conversation">↺ Clear</button>
+    <button id="send-btn">SEND ⏎</button>
+  </div>
+
+</div>
+
+<footer>
+  TheConduit ∴ ManifoldAI · Public Instance · theconduit.me · z = x·y
+  &nbsp;|&nbsp;
+  <span style="color:#c9a84c">By using this service you agree to our
+  <a href="#terms" id="terms-link" style="color:#c9a84c;text-decoration:underline">terms</a>:
+  requests are logged by IP, abuse is reported to authorities.</span>
+</footer>
+
+<div id="terms-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;align-items:center;justify-content:center;">
+  <div style="background:#111;border:1px solid #c9a84c;border-radius:6px;padding:28px 32px;max-width:540px;width:90%;color:#e8e4d8;font-family:'Courier New',monospace;font-size:.8rem;line-height:1.7;">
+    <div style="color:#c9a84c;font-size:1rem;margin-bottom:14px;letter-spacing:2px;">TERMS OF USE</div>
+    <p><strong>This is a public AI service.</strong> By sending a message you agree to the following:</p>
+    <ul style="margin:12px 0 12px 18px;">
+      <li>All requests are logged by IP address and timestamp.</li>
+      <li>Content that violates applicable law will be reported to the relevant authorities.</li>
+      <li>Do not submit requests for weapons instructions, illegal content, or content targeting real individuals.</li>
+      <li>This service is provided for legitimate reasoning, learning, and exploration only.</li>
+      <li>Abuse of the service (including automated scraping or flooding) will result in your IP being blocked.</li>
+    </ul>
+    <p style="color:#666;font-size:.72rem;">Rate limits apply. Max 15 requests/minute, 80 requests/day per IP.</p>
+    <button onclick="document.getElementById('terms-modal').style.display='none'"
+      style="margin-top:16px;background:#c9a84c;color:#0a0a0a;border:none;padding:8px 20px;
+             border-radius:4px;font-family:'Courier New',monospace;font-size:.8rem;cursor:pointer;">
+      Close
+    </button>
+  </div>
+</div>
+<script>
+  document.getElementById('terms-link').addEventListener('click', function(e){
+    e.preventDefault();
+    document.getElementById('terms-modal').style.display='flex';
+  });
+</script>
+
+<script>
+const chatLog     = document.getElementById('chat-log');
+const responseBox = document.getElementById('response-box');
+const input       = document.getElementById('user-input');
+const sendBtn     = document.getElementById('send-btn');
+const clearBtn    = document.getElementById('clear-btn');
+
+let messages = [];   // maintained in-browser — session is self-contained
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderMarkdown(raw) {
+  let s = escHtml(raw);
+  // code blocks
+  s = s.replace(/```[\w]*\n?([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+  // inline code
+  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // bold
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // italic
+  s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  // OQ block detection
+  s = s.replace(/\*\*Optimal Question.*?\*\*[:\s]*([^\n]+)/g,
+    '<div class="oq-block"><div class="oq-label">◈ OPTIMAL QUESTION</div>$1</div>');
+  s = s.replace(/OQ[:\s]+([^\n<]+)/g,
+    '<div class="oq-block"><div class="oq-label">◈ OPTIMAL QUESTION</div>$1</div>');
+  // newlines
+  s = s.replace(/\n/g, '<br>');
+  return s;
+}
+
+function addMessage(role, content) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg';
+  const label = document.createElement('div');
+  label.className = 'msg-role' + (role === 'model' ? ' ai' : '');
+  label.textContent = role === 'model' ? 'MANIFOLDAI' : 'YOU';
+  const body = document.createElement('div');
+  body.className = 'msg-content' + (role === 'model' ? ' ai' : '');
+  body.innerHTML = renderMarkdown(content);
+  wrap.appendChild(label);
+  wrap.appendChild(body);
+  chatLog.appendChild(wrap);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function setThinking(on) {
+  sendBtn.disabled = on;
+  if (on) {
+    responseBox.innerHTML = '<span class="thinking dot-anim">Traversing manifold</span>';
+  }
+}
+
+async function sendMessage() {
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  messages.push({ role: 'user', content: text });
+  addMessage('user', text);
+  setThinking(true);
+
+  try {
+    const res = await fetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages })
+    });
+    const data = await res.json();
+    const reply = data.reply || data.error || '⚠ Empty response.';
+    messages.push({ role: 'model', content: reply });
+    addMessage('model', reply);
+    responseBox.innerHTML = renderMarkdown(reply);
+  } catch (err) {
+    const msg = '⚠ Connection error: ' + err.message;
+    addMessage('model', msg);
+    responseBox.innerHTML = escHtml(msg);
+  } finally {
+    setThinking(false);
+  }
+}
+
+sendBtn.addEventListener('click', sendMessage);
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+});
+clearBtn.addEventListener('click', () => {
+  messages = [];
+  chatLog.innerHTML = '';
+  responseBox.textContent = 'Awaiting traversal…';
+});
+</script>
+</body>
+</html>
+

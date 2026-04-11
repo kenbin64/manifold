@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ManifoldAI · TwistedSquare∴</title>
+<meta name="description" content="Expert AI assistant — code, science, math, any topic. No hallucination.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --c1: #00ffff; --c2: #bf00ff; --c3: #39ff14;
+  --void: #080609; --surface: #110e14; --panel: rgba(18,13,22,0.88);
+  --text: #e2d8f0; --dim: #7a6a8a; --border: rgba(120,80,180,0.18);
+  --glow1: 0 0 12px rgba(0,255,255,0.5), 0 0 40px rgba(0,255,255,0.12);
+  --glow2: 0 0 12px rgba(191,0,255,0.5), 0 0 40px rgba(191,0,255,0.12);
+  --glow3: 0 0 12px rgba(57,255,20,0.4), 0 0 30px rgba(57,255,20,0.08);
+  --phi: 1.618rem; --r: 10px;
+}
+*,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
+html,body { height:100%; overflow:hidden; background:var(--void); color:var(--text);
+  font-family:'Inter',sans-serif; font-size:15px; }
+
+/* ── GYROID CANVAS ─────────────────────────────── */
+#gyroid-bg { position:fixed; inset:0; z-index:0; display:block; width:100%; height:100%; }
+
+/* ── APP SHELL ─────────────────────────────────── */
+#app { position:relative; z-index:1; display:flex; height:100vh; }
+
+/* ── SIDEBAR ───────────────────────────────────── */
+#sidebar {
+  width:280px; flex-shrink:0; display:flex; flex-direction:column;
+  background:var(--panel); border-right:1px solid var(--border);
+  backdrop-filter:blur(16px); padding:1.5rem 1.25rem; gap:1.25rem;
+  overflow-y:auto;
+}
+.logo-block { display:flex; flex-direction:column; gap:.4rem; }
+.logo { font-family:'Press Start 2P',monospace; font-size:.65rem;
+  color:var(--c2); text-shadow:var(--glow2); line-height:1.8; }
+.logo span { color:var(--c1); text-shadow:var(--glow1); }
+.logo-sub { font-size:.7rem; color:var(--dim); letter-spacing:.12em; text-transform:uppercase; }
+
+.eq-box {
+  background:rgba(0,0,0,0.4); border:1px solid var(--border);
+  border-radius:var(--r); padding:1rem; text-align:center; position:relative;
+}
+.eq-main { font-family:'JetBrains Mono',monospace; font-size:1.6rem;
+  color:var(--c1); text-shadow:var(--glow1); letter-spacing:.05em; }
+.eq-label { font-size:.65rem; color:var(--dim); margin-top:.3rem; }
+.eq-gyroid { font-family:'JetBrains Mono',monospace; font-size:.55rem;
+  color:var(--c2); opacity:.7; margin-top:.5rem; line-height:1.8; }
+
+.layers-block { display:flex; flex-direction:column; gap:.3rem; }
+.layers-title { font-size:.65rem; color:var(--dim); text-transform:uppercase; letter-spacing:.1em; margin-bottom:.2rem; }
+.layer-row { display:flex; align-items:center; gap:.5rem; padding:.3rem .5rem;
+  border-radius:6px; font-size:.7rem; transition:background .2s; }
+.layer-row.active { background:rgba(191,0,255,.12); border:1px solid rgba(191,0,255,.25); }
+.layer-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.layer-num { font-family:'JetBrains Mono',monospace; color:var(--dim); width:14px; }
+.layer-name { color:var(--text); flex:1; }
+.layer-path { font-size:.6rem; color:var(--dim); }
+
+.about-block { font-size:.75rem; color:var(--dim); line-height:1.7; }
+.about-block strong { color:var(--c3); }
+
+.status-pill {
+  display:flex; align-items:center; gap:.5rem; padding:.5rem .8rem;
+  background:rgba(57,255,20,.06); border:1px solid rgba(57,255,20,.2);
+  border-radius:999px; font-size:.65rem; color:var(--c3); margin-top:auto;
+}
+.pulse-dot { width:7px; height:7px; border-radius:50%; background:var(--c3);
+  box-shadow:var(--glow3); animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(.8)} }
+
+/* ── CHAT AREA ─────────────────────────────────── */
+#chat-area { flex:1; display:flex; flex-direction:column; min-width:0; }
+
+.chat-header {
+  display:flex; align-items:center; gap:1rem; padding:.9rem 1.4rem;
+  background:var(--panel); border-bottom:1px solid var(--border); backdrop-filter:blur(12px);
+  flex-shrink:0;
+}
+.ai-avatar { width:40px; height:40px; border-radius:50%;
+  background:linear-gradient(135deg,rgba(191,0,255,.3),rgba(0,255,255,.2));
+  border:1.5px solid var(--c2); display:flex; align-items:center; justify-content:center;
+  font-size:1.1rem; box-shadow:var(--glow2); animation:spin-glow 8s linear infinite; }
+@keyframes spin-glow { 0%,100%{box-shadow:var(--glow2)} 50%{box-shadow:var(--glow1)} }
+.ai-name { font-family:'Press Start 2P',monospace; font-size:.6rem;
+  color:var(--c2); text-shadow:var(--glow2); }
+.ai-layer { font-size:.65rem; color:var(--dim); margin-top:.2rem; }
+.header-eq { margin-left:auto; font-family:'JetBrains Mono',monospace;
+  font-size:.8rem; color:var(--c1); opacity:.5; }
+
+/* ── MESSAGES ──────────────────────────────────── */
+#messages {
+  flex:1; overflow-y:auto; padding:1.5rem 1.4rem; display:flex;
+  flex-direction:column; gap:1.1rem; scroll-behavior:smooth;
+}
+#messages::-webkit-scrollbar { width:4px; }
+#messages::-webkit-scrollbar-track { background:transparent; }
+#messages::-webkit-scrollbar-thumb { background:rgba(191,0,255,.3); border-radius:2px; }
+
+.msg { display:flex; gap:.75rem; max-width:78%; animation:msgIn .25s ease; }
+@keyframes msgIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.msg.user { align-self:flex-end; flex-direction:row-reverse; }
+.msg.ai   { align-self:flex-start; }
+
+.msg-avatar { width:32px; height:32px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:.85rem; }
+.msg.ai .msg-avatar { background:rgba(191,0,255,.15); border:1px solid rgba(191,0,255,.4); }
+.msg.user .msg-avatar { background:rgba(0,255,255,.12); border:1px solid rgba(0,255,255,.3); }
+
+.msg-bubble {
+  padding:.8rem 1.1rem; border-radius:var(--r); line-height:1.7;
+  font-size:.875rem; white-space:pre-wrap; word-break:break-word;
+}
+.msg.ai .msg-bubble {
+  background:rgba(191,0,255,.08); border:1px solid rgba(191,0,255,.2);
+  border-radius:2px var(--r) var(--r) var(--r);
+}
+.msg.user .msg-bubble {
+  background:rgba(0,255,255,.08); border:1px solid rgba(0,255,255,.22);
+  border-radius:var(--r) 2px var(--r) var(--r); color:var(--c1);
+}
+.msg-bubble code { font-family:'JetBrains Mono',monospace; font-size:.8rem;
+  background:rgba(0,0,0,.4); padding:.15em .4em; border-radius:4px; color:var(--c3); }
+.msg-bubble pre { background:rgba(0,0,0,.5); border:1px solid var(--border);
+  border-radius:8px; padding:1rem; overflow-x:auto; margin:.5rem 0; }
+.msg-bubble pre code { background:none; padding:0; color:var(--c1); }
+.msg-bubble h1,.msg-bubble h2,.msg-bubble h3 { color:var(--c1); margin:.6rem 0 .3rem; font-size:1em; }
+.msg-bubble h1{font-size:1.1em} .msg-bubble h2{font-size:1em} .msg-bubble h3{font-size:.95em}
+.msg-bubble ul,.msg-bubble ol { padding-left:1.4rem; margin:.3rem 0; }
+.msg-bubble li { margin:.15rem 0; }
+.msg-bubble blockquote { border-left:3px solid var(--c2); padding:.3rem .8rem;
+  margin:.4rem 0; color:var(--dim); font-style:italic; }
+.msg-bubble table { border-collapse:collapse; width:100%; margin:.5rem 0; font-size:.8em; }
+.msg-bubble th,.msg-bubble td { border:1px solid var(--border); padding:.3rem .6rem; }
+.msg-bubble th { background:rgba(191,0,255,.15); color:var(--c1); }
+.msg-bubble strong { color:var(--c3); font-weight:600; }
+.msg-bubble em { color:rgba(226,216,240,.75); }
+
+.msg-meta { font-size:.6rem; color:var(--dim); margin-top:.3rem; }
+.msg.user .msg-meta { text-align:right; }
+
+/* code block with copy */
+.code-wrapper { position:relative; margin:.5rem 0; }
+.code-wrapper pre { background:rgba(0,0,0,.6); border:1px solid rgba(0,255,255,.12);
+  border-radius:8px; padding:1rem 1rem 1rem 1rem; overflow-x:auto; margin:0; }
+.code-wrapper pre code { background:none; padding:0; color:var(--c1); font-size:.8rem; white-space:pre; }
+.copy-btn { position:absolute; top:.4rem; right:.4rem; background:rgba(0,255,255,.1);
+  border:1px solid rgba(0,255,255,.25); color:var(--c1); border-radius:5px; padding:.2rem .55rem;
+  font-size:.6rem; cursor:pointer; opacity:0; transition:opacity .2s; font-family:inherit; }
+.code-wrapper:hover .copy-btn { opacity:1; }
+.copy-btn.copied { color:var(--c3); border-color:var(--c3); }
+
+/* tool call indicator */
+.tool-call { display:flex; flex-direction:column; gap:.3rem; margin:.5rem 0;
+  background:rgba(0,0,0,.35); border:1px solid rgba(57,255,20,.2);
+  border-radius:8px; padding:.6rem .9rem; font-size:.75rem; }
+.tool-call-header { display:flex; align-items:center; gap:.5rem; color:var(--c3);
+  font-family:'JetBrains Mono',monospace; cursor:pointer; user-select:none; }
+.tool-call-header .tool-icon { font-size:.9rem; }
+.tool-call-detail { color:var(--dim); font-family:'JetBrains Mono',monospace;
+  font-size:.68rem; margin-top:.2rem; white-space:pre-wrap; display:none; }
+.tool-call-detail.open { display:block; }
+
+/* thinking pill */
+.thinking-pill { display:inline-flex; align-items:center; gap:.4rem;
+  padding:.25rem .7rem; background:rgba(57,255,20,.06);
+  border:1px solid rgba(57,255,20,.2); border-radius:999px;
+  font-size:.65rem; color:var(--c3); margin:.3rem 0; }
+.thinking-pill .spin { animation:spin .8s linear infinite; display:inline-block; }
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* typing indicator */
+.typing-bubble { display:flex; gap:4px; align-items:center; padding:.8rem 1.1rem;
+  background:rgba(191,0,255,.06); border:1px solid rgba(191,0,255,.15);
+  border-radius:2px var(--r) var(--r) var(--r); }
+.typing-bubble span { width:6px; height:6px; border-radius:50%;
+  background:var(--c2); animation:bounce .9s infinite; }
+.typing-bubble span:nth-child(2){animation-delay:.15s}
+.typing-bubble span:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,100%{transform:translateY(0);opacity:.4}50%{transform:translateY(-5px);opacity:1}}
+
+/* ── INPUT AREA ─────────────────────────────────── */
+#input-area {
+  padding:1rem 1.4rem; background:var(--panel); border-top:1px solid var(--border);
+  backdrop-filter:blur(12px); flex-shrink:0;
+}
+.input-row { display:flex; gap:.75rem; align-items:flex-end; }
+#user-input {
+  flex:1; background:rgba(0,0,0,.4); border:1px solid var(--border);
+  border-radius:var(--r); color:var(--text); font-family:'Inter',sans-serif;
+  font-size:.875rem; padding:.75rem 1rem; resize:none; outline:none; min-height:46px;
+  max-height:160px; line-height:1.6; transition:border-color .2s, box-shadow .2s;
+}
+#user-input:focus { border-color:rgba(191,0,255,.5); box-shadow:0 0 0 2px rgba(191,0,255,.1); }
+#user-input::placeholder { color:var(--dim); }
+.send-btn {
+  width:46px; height:46px; border-radius:50%; border:1.5px solid var(--c2);
+  background:rgba(191,0,255,.12); color:var(--c2); font-size:1.1rem; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  transition:background .2s, box-shadow .2s; box-shadow:var(--glow2);
+}
+.send-btn:hover { background:rgba(191,0,255,.25); }
+.send-btn:disabled { opacity:.4; cursor:not-allowed; }
+.disclaimer { font-size:.6rem; color:var(--dim); text-align:center; margin-top:.5rem;
+  letter-spacing:.05em; }
+
+/* ── TERMINAL DRAWER ───────────────────────────────── */
+#term-drawer {
+  position:fixed; bottom:0; left:0; right:0; z-index:100;
+  height:400px; background:var(--surface);
+  border-top:2px solid var(--c3); box-shadow:0 -8px 40px rgba(57,255,20,.14);
+  display:flex; flex-direction:column;
+  transform:translateY(100%); transition:transform .3s cubic-bezier(.4,0,.2,1);
+}
+#term-drawer.open { transform:translateY(0); }
+.term-resize { position:absolute; top:-4px; left:0; right:0; height:8px; cursor:ns-resize; }
+.term-tabs { display:flex; border-bottom:1px solid var(--border);
+  background:rgba(0,0,0,.5); flex-shrink:0; }
+.term-tab { padding:.45rem 1.2rem; font-size:.63rem; letter-spacing:.1em;
+  text-transform:uppercase; font-family:'JetBrains Mono',monospace;
+  color:var(--dim); cursor:pointer; border-bottom:2px solid transparent; transition:all .2s; }
+.term-tab.active { color:var(--c3); border-bottom-color:var(--c3); }
+.term-panel { display:none; flex:1; flex-direction:column; min-height:0; }
+.term-panel.active { display:flex; }
+
+#term-output { flex:1; overflow-y:auto; padding:.75rem 1rem;
+  font-family:'JetBrains Mono',monospace; font-size:.77rem; line-height:1.6;
+  color:var(--c3); background:rgba(0,0,0,.55); white-space:pre-wrap; word-break:break-all; min-height:0; }
+#term-output::-webkit-scrollbar{width:4px}
+#term-output::-webkit-scrollbar-thumb{background:rgba(57,255,20,.3);border-radius:2px}
+.term-input-row { display:flex; align-items:center; gap:.5rem; padding:.45rem .75rem;
+  border-top:1px solid rgba(57,255,20,.15); background:rgba(0,0,0,.7); flex-shrink:0; }
+.term-prompt { font-family:'JetBrains Mono',monospace; color:var(--c3); font-size:.78rem; flex-shrink:0; }
+#term-input { flex:1; background:transparent; border:none; outline:none;
+  font-family:'JetBrains Mono',monospace; font-size:.78rem; color:var(--c3); caret-color:var(--c3); }
+#term-input::placeholder { color:rgba(57,255,20,.3); }
+.term-run-btn { background:rgba(57,255,20,.1); border:1px solid rgba(57,255,20,.3);
+  color:var(--c3); border-radius:5px; padding:.22rem .65rem; font-size:.68rem;
+  cursor:pointer; font-family:inherit; transition:background .2s; flex-shrink:0; }
+.term-run-btn:hover { background:rgba(57,255,20,.22); }
+.term-run-btn:disabled { opacity:.4; cursor:not-allowed; }
+
+#files-panel { flex:1; display:flex; flex-direction:column; gap:.65rem;
+  padding:.9rem 1.2rem; overflow-y:auto; min-height:0; }
+.upload-zone { border:2px dashed rgba(0,255,255,.2); border-radius:var(--r);
+  padding:1.2rem; text-align:center; cursor:pointer; transition:all .2s; }
+.upload-zone:hover,.upload-zone.drag { border-color:var(--c1); background:rgba(0,255,255,.05); }
+.upload-zone input[type=file] { display:none; }
+.uz-icon { font-size:1.6rem; margin-bottom:.3rem; }
+.uz-text { font-size:.73rem; color:var(--dim); }
+.upload-dest-row { display:flex; gap:.5rem; align-items:center; }
+.upload-dest-row label { font-size:.68rem; color:var(--dim); flex-shrink:0; }
+#upload-dest { flex:1; background:rgba(0,0,0,.4); border:1px solid var(--border);
+  border-radius:6px; color:var(--text); font-family:'JetBrains Mono',monospace;
+  font-size:.73rem; padding:.35rem .65rem; outline:none; }
+#upload-dest:focus { border-color:rgba(0,255,255,.4); }
+.upload-btn { background:rgba(0,255,255,.1); border:1.5px solid var(--c1);
+  color:var(--c1); border-radius:6px; padding:.35rem .9rem; font-size:.72rem;
+  cursor:pointer; font-family:inherit; transition:background .2s; flex-shrink:0; }
+.upload-btn:hover { background:rgba(0,255,255,.2); }
+.upload-btn:disabled { opacity:.4; cursor:not-allowed; }
+#upload-log { font-family:'JetBrains Mono',monospace; font-size:.7rem; color:var(--dim); line-height:1.9; }
+#upload-log .ok  { color:var(--c3); }
+#upload-log .err { color:#ff5555; }
+
+.term-toggle-btn { margin-left:.5rem; background:rgba(57,255,20,.07);
+  border:1px solid rgba(57,255,20,.25); color:var(--c3); border-radius:6px;
+  padding:.28rem .65rem; font-size:.62rem; cursor:pointer;
+  font-family:'JetBrains Mono',monospace; letter-spacing:.06em;
+  transition:background .2s; flex-shrink:0; }
+.term-toggle-btn:hover { background:rgba(57,255,20,.18); }
+.term-toggle-btn.active { background:rgba(57,255,20,.2); border-color:var(--c3); }
+
+.attach-btn { background:none; border:none; font-size:1.2rem; cursor:pointer;
+  padding:0 .4rem; opacity:.7; transition:opacity .2s; flex-shrink:0; }
+.attach-btn:hover { opacity:1; }
+.attach-btn.has-file { opacity:1; filter:drop-shadow(0 0 4px var(--c1)); }
+#attach-bar { display:none; }
+
+/* ── GENERATED MEDIA ────────────────────────────── */
+.gen-img-wrap { margin:.6rem 0; display:inline-flex; flex-direction:column; gap:.35rem; max-width:100%; }
+.gen-img { max-width:min(480px,100%); border-radius:8px; border:1px solid var(--border);
+  box-shadow:0 4px 24px rgba(191,0,255,.18); cursor:zoom-in; display:block; }
+video.gen-img { cursor:default; }
+.gen-img-actions { display:flex; gap:.5rem; }
+.gen-dl-btn { font-size:.65rem; color:var(--c1); border:1px solid rgba(0,255,255,.25);
+  background:rgba(0,255,255,.07); border-radius:5px; padding:.2rem .6rem;
+  text-decoration:none; transition:background .2s; }
+.gen-dl-btn:hover { background:rgba(0,255,255,.2); }
+
+/* ── MEMORY PANEL ────────────────────────────────── */
+#panel-memory { flex-direction:column; overflow:hidden; }
+#mem-toolbar { display:flex; align-items:center; gap:.6rem; padding:.55rem 1rem;
+  background:rgba(0,0,0,.4); border-bottom:1px solid var(--border); flex-shrink:0; }
+#mem-search { flex:1; background:rgba(255,255,255,.05); border:1px solid var(--border);
+  border-radius:6px; padding:.35rem .75rem; color:var(--text); font-family:'JetBrains Mono',monospace;
+  font-size:.75rem; outline:none; }
+#mem-search:focus { border-color:rgba(0,255,255,.4); }
+#mem-refresh-btn { font-size:.65rem; padding:.3rem .7rem; background:rgba(57,255,20,.08);
+  border:1px solid rgba(57,255,20,.25); border-radius:5px; color:var(--c3);
+  cursor:pointer; font-family:'JetBrains Mono',monospace; letter-spacing:.08em; }
+#mem-refresh-btn:hover { background:rgba(57,255,20,.2); }
+#mem-body { flex:1; overflow-y:auto; padding:.75rem 1rem; display:flex; flex-direction:column; gap:.4rem; }
+.mem-section-hdr { font-size:.65rem; letter-spacing:.12em; color:var(--c2);
+  font-family:'JetBrains Mono',monospace; padding:.25rem 0; border-bottom:1px solid var(--border);
+  margin-bottom:.4rem; }
+.mem-fact { display:flex; gap:.6rem; padding:.3rem .5rem; border-radius:5px;
+  background:rgba(191,0,255,.07); border:1px solid rgba(191,0,255,.12); font-size:.73rem; }
+.mem-fact-key { color:var(--c2); font-weight:600; min-width:100px; flex-shrink:0; }
+.mem-fact-val { color:var(--text); flex:1; word-break:break-word; }
+.mem-fact-ts  { color:var(--dim); font-size:.63rem; flex-shrink:0; align-self:flex-end; }
+.mem-entry { display:flex; gap:.6rem; padding:.35rem .5rem; border-radius:5px;
+  border-left:2px solid transparent; font-size:.73rem; transition:background .15s; }
+.mem-entry:hover { background:rgba(255,255,255,.03); }
+.mem-entry.role-user    { border-left-color:var(--c1); }
+.mem-entry.role-assistant { border-left-color:var(--c2); }
+.mem-entry-ts   { color:var(--dim); font-size:.63rem; min-width:120px; flex-shrink:0; padding-top:.1rem; }
+.mem-entry-body { flex:1; overflow:hidden; }
+.mem-entry-role { font-size:.6rem; letter-spacing:.1em; color:var(--dim); margin-bottom:.1rem; }
+.mem-entry-text { color:var(--text); white-space:pre-wrap; word-break:break-word;
+  max-height:4.5em; overflow:hidden; transition:max-height .3s; cursor:pointer; }
+.mem-entry-text.expanded { max-height:none; }
+.mem-entry-tools { font-size:.63rem; color:var(--c3); margin-top:.2rem; }
+.mem-empty { color:var(--dim); font-size:.78rem; text-align:center; padding:2rem; }
+
+/* ── MOBILE ─────────────────────────────────────── */
+@media(max-width:700px) {
+  #sidebar { display:none; }
+  .header-eq { display:none; }
+}
+</style>
+</head>
+<body>
+<canvas id="gyroid-bg"></canvas>
+<div id="app">
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <div class="logo-block">
+      <div class="logo">∴<span>MANIFOLD</span><br>AI</div>
+      <div class="logo-sub">TwistedSquare∴ Intelligence</div>
+    </div>
+
+    <div class="eq-box">
+      <div class="eq-main">z = xy</div>
+      <div class="eq-label">Schwarz Diamond — the primordial surface</div>
+      <div class="eq-gyroid">sin(x)cos(y)<br>+ sin(y)cos(z)<br>+ sin(z)cos(x) = 0</div>
+    </div>
+
+    <div class="layers-block">
+      <div class="layers-title">Dimensional Stack</div>
+      <div class="layer-row"><div class="layer-dot" style="background:#555"></div><div class="layer-num">0</div><div class="layer-name">Kernel</div><div class="layer-path">point/</div></div>
+      <div class="layer-row"><div class="layer-dot" style="background:#0af"></div><div class="layer-num">1</div><div class="layer-name">Core</div><div class="layer-path">line/</div></div>
+      <div class="layer-row"><div class="layer-dot" style="background:#5af"></div><div class="layer-num">2</div><div class="layer-name">Substrate</div><div class="layer-path">plane/</div></div>
+      <div class="layer-row"><div class="layer-dot" style="background:#a5f"></div><div class="layer-num">3</div><div class="layer-name">Engine</div><div class="layer-path">volume/</div></div>
+      <div class="layer-row"><div class="layer-dot" style="background:#f5a"></div><div class="layer-num">4</div><div class="layer-name">SDK</div><div class="layer-path">width/</div></div>
+      <div class="layer-row active"><div class="layer-dot" style="background:#bf0f;box-shadow:0 0 6px #bf00ff"></div><div class="layer-num">6</div><div class="layer-name">Apex</div><div class="layer-path">whole/</div></div>
+    </div>
+
+    <div class="about-block">
+      <strong>Capabilities:</strong> code, debug, math, science, writing — any topic.<br><br>
+      <strong>Principle:</strong> Never invents facts. Uses tools to verify before answering.
+    </div>
+
+    <div class="status-pill">
+      <div class="pulse-dot"></div>
+      ONLINE · LAYER 6 · MIND
+    </div>
+  </aside>
+
+  <!-- CHAT AREA -->
+  <main id="chat-area">
+    <header class="chat-header">
+      <div class="ai-avatar">∴</div>
+      <div>
+        <div class="ai-name">ManifoldAI</div>
+        <div class="ai-layer">Gyroid surface · Next-gen geometry intelligence</div>
+      </div>
+      <div class="header-eq">sin(x)cos(y) + sin(y)cos(z) + sin(z)cos(x) = 0</div>
+      <button class="term-toggle-btn" id="term-toggle-btn" title="Toggle Terminal / File Upload">⬛ TERMINAL</button>
+    </header>
+
+    <div id="messages"></div>
+
+    <!-- Attachment preview bar (shown when a file/image is staged) -->
+    <div id="attach-bar" style="display:none;padding:.4rem 1rem;background:rgba(0,255,255,.06);border-top:1px solid rgba(0,255,255,.15);display:none;align-items:center;gap:.75rem;font-size:.75rem;color:var(--c1);">
+      <span id="attach-icon">📎</span>
+      <span id="attach-name" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+      <img id="attach-thumb" style="max-height:48px;max-width:80px;border-radius:4px;display:none;" alt="">
+      <button onclick="clearAttachment()" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:1rem;padding:0 .25rem;">✕</button>
+    </div>
+
+    <div id="input-area">
+      <div class="input-row">
+        <button class="attach-btn" id="attach-btn" title="Attach file or image">📎</button>
+        <input type="file" id="chat-file-picker" accept="*/*" style="display:none">
+        <textarea id="user-input" rows="1" placeholder="Ask anything — or attach a file/image with 📎…"></textarea>
+        <button class="send-btn" id="send-btn" title="Send (Enter)">➤</button>
+      </div>
+      <div class="disclaimer">ManifoldAI · z = xy · ButterflyFX Manifold © 2026 Kenneth Bingham · Local Mode</div>
+    </div>
+  </main>
+</div>
+
+<!-- ── TERMINAL DRAWER ──────────────────────────────────────────── -->
+<div id="term-drawer">
+  <div class="term-resize" id="term-resize"></div>
+  <div class="term-tabs">
+    <div class="term-tab active" data-tab="terminal">⬛ TERMINAL</div>
+    <div class="term-tab" data-tab="files">📁 FILES</div>
+    <div class="term-tab" data-tab="memory" id="mem-tab-btn">📜 MEMORY</div>
+    <div style="flex:1"></div>
+    <div class="term-tab" id="term-close" style="padding:.45rem 1rem">✕</div>
+  </div>
+  <!-- Terminal panel -->
+  <div class="term-panel active" id="panel-terminal">
+    <div id="term-output"></div>
+    <div class="term-input-row">
+      <span class="term-prompt">root@manifold:~$&nbsp;</span>
+      <input id="term-input" autocomplete="off" spellcheck="false" placeholder="enter command…">
+      <button class="term-run-btn" id="term-run-btn">▶ RUN</button>
+    </div>
+  </div>
+  <!-- Files panel -->
+  <div class="term-panel" id="panel-files">
+    <div id="files-panel">
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" id="file-picker" multiple>
+        <div class="uz-icon">📤</div>
+        <div class="uz-text">Click or drag &amp; drop files here to upload to VPS</div>
+      </div>
+      <div class="upload-dest-row">
+        <label>Destination path:</label>
+        <input id="upload-dest" placeholder="/tmp/manifoldai/uploads/ (default)">
+        <button class="upload-btn" id="upload-btn">UPLOAD</button>
+      </div>
+      <div id="upload-log"></div>
+    </div>
+  </div>
+  <!-- Memory panel -->
+  <div class="term-panel" id="panel-memory">
+    <div id="mem-toolbar">
+      <input id="mem-search" placeholder="🔍  search memory…" autocomplete="off">
+      <button id="mem-refresh-btn" title="Refresh">↻ REFRESH</button>
+      <span id="mem-status" style="font-size:.68rem;color:var(--dim);margin-left:.5rem"></span>
+    </div>
+    <div id="mem-body">
+      <div id="mem-facts-section">
+        <div class="mem-section-hdr">📌 STORED FACTS</div>
+        <div id="mem-facts"></div>
+      </div>
+      <div class="mem-section-hdr" style="margin-top:.8rem">📜 CONVERSATION LOG</div>
+      <div id="mem-log"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   GYROID WEBGL BACKGROUND
+   sin(x)cos(y) + sin(y)cos(z) + sin(z)cos(x) = 0
+   ═══════════════════════════════════════════════════ */
+(function(){
+  const canvas=document.getElementById('gyroid-bg');
+  const gl=canvas.getContext('webgl2')||canvas.getContext('webgl');
+  if(!gl)return;
+  function resize(){canvas.width=innerWidth;canvas.height=innerHeight;gl.viewport(0,0,canvas.width,canvas.height);}
+  addEventListener('resize',resize);resize();
+  const vs=`attribute vec2 a;varying vec2 v;void main(){v=a*.5+.5;gl_Position=vec4(a,0,1);}`;
+  const fs=`precision highp float;varying vec2 v;uniform float t;uniform vec2 r;
+  float gyroid(vec3 p){return sin(p.x)*cos(p.y)+sin(p.y)*cos(p.z)+sin(p.z)*cos(p.x);}
+  float diamond(vec3 p){return cos(p.x)*cos(p.y)*cos(p.z)-sin(p.x)*sin(p.y)*sin(p.z);}
+  float scene(vec3 p){float g=gyroid(p*2.2+t*.12);float d=diamond(p*1.6-t*.08);return mix(g,d,.35+.2*sin(t*.18));}
+  void main(){
+    vec2 uv=(gl_FragCoord.xy-r*.5)/min(r.x,r.y);
+    vec3 ro=vec3(uv*2.,t*.25);vec3 rd=normalize(vec3(uv,1.));
+    float T=0.,glow=0.;
+    for(int i=0;i<48;i++){vec3 p=ro+rd*T;float d=scene(p);glow+=exp(-abs(d)*9.)*.022;if(abs(d)<.01)break;T+=max(abs(d)*.45,.015);if(T>14.)break;}
+    float ph=sin(t*.13)*.5+.5;
+    vec3 c1=mix(vec3(0,1,1),vec3(.75,0,1),ph);
+    vec3 c2=mix(vec3(.75,0,1),vec3(.22,1,.08),1.-ph);
+    vec3 col=mix(c1,c2,glow*2.)*glow*.65;
+    col*=1.-length(v-.5)*.85;
+    gl_FragColor=vec4(col,1.);
+  }`;
+  function sh(type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);return s;}
+  const prog=gl.createProgram();
+  gl.attachShader(prog,sh(gl.VERTEX_SHADER,vs));
+  gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,fs));
+  gl.linkProgram(prog);gl.useProgram(prog);
+  const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+  const aPos=gl.getAttribLocation(prog,'a');gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos,2,gl.FLOAT,false,0,0);
+  const uT=gl.getUniformLocation(prog,'t'),uR=gl.getUniformLocation(prog,'r');
+  (function frame(ms){gl.uniform1f(uT,ms*.001);gl.uniform2f(uR,canvas.width,canvas.height);
+    gl.drawArrays(gl.TRIANGLE_STRIP,0,4);requestAnimationFrame(frame);})(0);
+})();
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   CHAT LOGIC  —  ManifoldAI  ∴  z = xy
+   Supports tool-call display, markdown, copy buttons,
+   file/image upload via /upload endpoint
+   ═══════════════════════════════════════════════════ */
+const messagesEl = document.getElementById('messages');
+const inputEl    = document.getElementById('user-input');
+const sendBtn    = document.getElementById('send-btn');
+const attachBtn  = document.getElementById('attach-btn');
+const filePicker = document.getElementById('chat-file-picker');
+const attachBar  = document.getElementById('attach-bar');
+const attachName = document.getElementById('attach-name');
+const attachThumb= document.getElementById('attach-thumb');
+let history = [], busy = false;
+let pendingAttachment = null;  // { filename, content_base64, mime_type, is_image, preview }
+
+// ── attachment handling ───────────────────────────────
+attachBtn.addEventListener('click', () => filePicker.click());
+filePicker.addEventListener('change', () => {
+  if(filePicker.files[0]) stageFile(filePicker.files[0]);
+});
+
+// Drag-and-drop on message area
+messagesEl.addEventListener('dragover', e => { e.preventDefault(); messagesEl.style.outline='2px dashed var(--c1)'; });
+messagesEl.addEventListener('dragleave', () => { messagesEl.style.outline=''; });
+messagesEl.addEventListener('drop', e => {
+  e.preventDefault(); messagesEl.style.outline='';
+  if(e.dataTransfer.files[0]) stageFile(e.dataTransfer.files[0]);
+});
+
+async function stageFile(file){
+  const reader = new FileReader();
+  reader.onload = async (ev) => {
+    const b64 = ev.target.result.split(',')[1];
+    pendingAttachment = { filename: file.name, content_base64: b64, mime_type: file.type || 'application/octet-stream' };
+    attachName.textContent = file.name;
+    attachBtn.classList.add('has-file');
+    attachBar.style.display = 'flex';
+    if(file.type.startsWith('image/')){
+      attachThumb.src = ev.target.result;
+      attachThumb.style.display = 'block';
+      attachName.textContent = `🖼 ${file.name}`;
+    } else {
+      attachThumb.style.display = 'none';
+      attachName.textContent = `📄 ${file.name}`;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+window.clearAttachment = () => {
+  pendingAttachment = null;
+  attachBar.style.display = 'none';
+  attachThumb.style.display = 'none';
+  attachBtn.classList.remove('has-file');
+  filePicker.value = '';
+};
+
+// ── utils ────────────────────────────────────────────
+const esc = t => t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function fmtTime(){const d=new Date();return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');}
+
+// ── image / video marker rendering ───────────────────
+function renderMediaMarkers(text){
+  // [IMAGE:https://...] → inline <img>
+  text = text.replace(/\[IMAGE:(https?:\/\/[^\]\s]+)\]/g,
+    (_, url) => `<div class="gen-img-wrap"><img src="${url}" class="gen-img" alt="generated image" loading="lazy" onclick="window.open('${url}','_blank')"><div class="gen-img-actions"><a href="${url}" download target="_blank" class="gen-dl-btn">⬇ Download</a><a href="${url}" target="_blank" class="gen-dl-btn">🔗 Open</a></div></div>`
+  );
+  // [VIDEO:https://...] → inline <video>
+  text = text.replace(/\[VIDEO:(https?:\/\/[^\]\s]+)\]/g,
+    (_, url) => `<div class="gen-img-wrap"><video src="${url}" class="gen-img" controls loop muted playsinline></video><div class="gen-img-actions"><a href="${url}" download target="_blank" class="gen-dl-btn">⬇ Download</a></div></div>`
+  );
+  return text;
+}
+
+// ── markdown → html ──────────────────────────────────
+function md(text){
+  // code blocks — extracted before other processing
+  const blocks=[];
+  text=text.replace(/```([\w-]*)\n?([\s\S]*?)```/g,(_,lang,code)=>{
+    const idx=blocks.length;
+    blocks.push({lang,code:code.trim()});
+    return `\x00BLOCK${idx}\x00`;
+  });
+  // inline code
+  text=text.replace(/`([^`\n]+)`/g,(_,c)=>`<code>${esc(c)}</code>`);
+  // headings
+  text=text.replace(/^### (.+)$/gm,'<h3>$1</h3>');
+  text=text.replace(/^## (.+)$/gm,'<h2>$1</h2>');
+  text=text.replace(/^# (.+)$/gm,'<h1>$1</h1>');
+  // bold / italic
+  text=text.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  text=text.replace(/\*(.+?)\*/g,'<em>$1</em>');
+  // blockquote
+  text=text.replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>');
+  // unordered list
+  text=text.replace(/((?:^[-*] .+\n?)+)/gm,m=>'<ul>'+m.replace(/^[-*] (.+)$/gm,'<li>$1</li>')+'</ul>');
+  // ordered list
+  text=text.replace(/((?:^\d+\. .+\n?)+)/gm,m=>'<ol>'+m.replace(/^\d+\. (.+)$/gm,'<li>$1</li>')+'</ol>');
+  // horizontal rule
+  text=text.replace(/^---$/gm,'<hr>');
+  // paragraphs
+  text=text.split(/\n{2,}/).map(p=>p.trim()&&!p.startsWith('<')?`<p>${p.replace(/\n/g,'<br>')}</p>`:p).join('');
+  // restore code blocks with copy button
+  text=text.replace(/\x00BLOCK(\d+)\x00/g,(_,i)=>{
+    const {lang,code}=blocks[i];
+    return `<div class="code-wrapper"><button class="copy-btn" onclick="copyCode(this)">copy</button><pre><code class="lang-${lang}">${esc(code)}</code></pre></div>`;
+  });
+  // render image/video markers last (so they don't get escaped)
+  text = renderMediaMarkers(text);
+  return text;
+}
+
+// ── copy button ──────────────────────────────────────
+window.copyCode = btn => {
+  const code = btn.nextElementSibling.querySelector('code').textContent;
+  navigator.clipboard.writeText(code).then(()=>{
+    btn.textContent='copied!'; btn.classList.add('copied');
+    setTimeout(()=>{btn.textContent='copy';btn.classList.remove('copied');},1800);
+  });
+};
+
+// ── tool log display ─────────────────────────────────
+function renderToolLog(tool_log, container){
+  if(!tool_log||!tool_log.length)return;
+  tool_log.forEach(t=>{
+    const div=document.createElement('div');
+    div.className='tool-call';
+    const icons={'execute_python':'🐍','read_file':'📂','write_file':'💾','list_files':'📋','create_directory':'📁','shell':'🔧',
+      'text_to_image':'🎨','image_to_image':'🖼','image_to_video':'🎬',
+      'github_read_file':'📦','github_write_file':'✏️','github_list_issues':'🐛',
+      'github_create_issue':'📝','github_create_pr':'🔀','github_search_code':'🔍','github_list_commits':'📜',
+      'ask_vps_ai':'🤝','ask_local_ai':'💻'};
+    const icon=icons[t.tool]||'⚙';
+    const args=JSON.stringify(t.args||{});
+    div.innerHTML=`<div class="tool-call-header" onclick="this.nextElementSibling.classList.toggle('open')">
+      <span class="tool-icon">${icon}</span>
+      <span>${t.tool}</span>
+      <span style="color:var(--dim);font-size:.65rem">${args.length>60?args.slice(0,57)+'…':args}</span>
+      <span style="margin-left:auto;color:var(--dim)">▾</span>
+    </div>
+    <div class="tool-call-detail">${esc(t.result||'')}</div>`;
+    container.appendChild(div);
+  });
+}
+
+// ── add message ──────────────────────────────────────
+function addMsg(role, content, tool_log, imageDataUrl){
+  const wrap=document.createElement('div');
+  wrap.className='msg '+role;
+  const av=document.createElement('div');
+  av.className='msg-avatar';
+  av.textContent=role==='ai'?'∴':'⬡';
+  const bubble=document.createElement('div');
+  bubble.className='msg-bubble';
+  if(role==='ai'){
+    if(tool_log&&tool_log.length) renderToolLog(tool_log,bubble);
+    bubble.innerHTML += md(content);
+  } else {
+    if(imageDataUrl){
+      const img=document.createElement('img');
+      img.src=imageDataUrl;img.style.cssText='max-width:240px;max-height:160px;border-radius:6px;margin-bottom:.4rem;display:block;';
+      bubble.appendChild(img);
+    }
+    const t=document.createElement('div');t.textContent=content;bubble.appendChild(t);
+  }
+  const meta=document.createElement('div');
+  meta.className='msg-meta';
+  meta.textContent=fmtTime()+(role==='ai'?' · ManifoldAI':'');
+  const inner=document.createElement('div');inner.style.flex='1';inner.style.minWidth='0';
+  inner.append(bubble,meta);
+  wrap.append(av,inner);
+  messagesEl.appendChild(wrap);
+  messagesEl.scrollTop=messagesEl.scrollHeight;
+}
+
+// ── thinking indicator ───────────────────────────────
+function showTyping(msg){
+  const wrap=document.createElement('div');wrap.className='msg ai';wrap.id='typing-ind';
+  const av=document.createElement('div');av.className='msg-avatar';av.textContent='∴';
+  const bub=document.createElement('div');bub.className='typing-bubble';
+  bub.innerHTML='<span></span><span></span><span></span>';
+  wrap.append(av,bub);messagesEl.appendChild(wrap);messagesEl.scrollTop=messagesEl.scrollHeight;
+}
+function hideTyping(){const t=document.getElementById('typing-ind');if(t)t.remove();}
+
+// ── upload + chat ─────────────────────────────────────
+async function chat(userMsg, attachment){
+  const historyMsg = {role:'user', content:userMsg};
+  let imageDataUrl = null;
+
+  if(attachment){
+    // Upload to server first
+    try{
+      const upRes = await fetch('/upload',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(attachment)});
+      const upData = await upRes.json();
+      if(upData.error) throw new Error(upData.error);
+      // Inject file context into message
+      const fileNote = upData.is_image
+        ? `\n\n[Attached image: ${upData.filename} saved to ${upData.path}]`
+        : `\n\n[Attached file: ${upData.filename} saved to ${upData.path}]\nContent preview:\n${upData.preview}`;
+      historyMsg.content = userMsg + fileNote;
+      if(upData.is_image){
+        historyMsg.image_b64  = upData.content_base64;
+        historyMsg.image_mime = upData.mime;
+        imageDataUrl = 'data:'+upData.mime+';base64,'+upData.content_base64;
+      }
+    }catch(e){
+      addMsg('ai','⚠ Upload failed: '+e.message);return;
+    }
+  }
+
+  history.push(historyMsg);
+  showTyping();
+  sendBtn.disabled=true;busy=true;
+  try{
+    const res=await fetch('/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({messages:history})});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const data=await res.json();
+    const reply=data.reply||'(no response)';
+    history.push({role:'ai',content:reply});
+    hideTyping();
+    addMsg('ai',reply,data.tool_log||[]);
+  }catch(e){
+    hideTyping();
+    addMsg('ai','⚠ Connection error: '+e.message+'\n\nMake sure the ManifoldAI server is running.');
+  }finally{
+    sendBtn.disabled=false;busy=false;inputEl.focus();
+  }
+}
+
+// ── send ─────────────────────────────────────────────
+function send(){
+  if(busy)return;
+  const msg=inputEl.value.trim();
+  const att=pendingAttachment;
+  if(!msg&&!att)return;
+  const displayMsg=msg||(att?`Attached: ${att.filename}`:'');
+  addMsg('user',displayMsg,null,att&&att.mime_type.startsWith('image/')
+    ?'data:'+att.mime_type+';base64,'+att.content_base64:null);
+  inputEl.value='';inputEl.style.height='auto';
+  clearAttachment();
+  chat(msg||displayMsg, att);
+}
+sendBtn.addEventListener('click',send);
+inputEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
+inputEl.addEventListener('input',()=>{inputEl.style.height='auto';inputEl.style.height=Math.min(inputEl.scrollHeight,160)+'px';});
+
+// ── TERMINAL DRAWER ──────────────────────────────────
+const drawer     = document.getElementById('term-drawer');
+const toggleBtn  = document.getElementById('term-toggle-btn');
+const closeBtn   = document.getElementById('term-close');
+const tabs       = document.querySelectorAll('.term-tab[data-tab]');
+const panels     = document.querySelectorAll('.term-panel');
+const termOutput = document.getElementById('term-output');
+const termInput  = document.getElementById('term-input');
+const termRun    = document.getElementById('term-run-btn');
+const resizeBar  = document.getElementById('term-resize');
+
+function openDrawer(tab){
+  drawer.classList.add('open');
+  toggleBtn.classList.add('active');
+  if(tab) switchTab(tab);
+}
+function closeDrawer(){
+  drawer.classList.remove('open');
+  toggleBtn.classList.remove('active');
+}
+toggleBtn.addEventListener('click',()=>{
+  drawer.classList.contains('open') ? closeDrawer() : openDrawer('terminal');
+});
+closeBtn.addEventListener('click', closeDrawer);
+
+// Tab switching
+function switchTab(name){
+  tabs.forEach(t => t.classList.toggle('active', t.dataset.tab===name));
+  panels.forEach(p => p.classList.toggle('active', p.id==='panel-'+name));
+  if(name==='memory') refreshMemory();
+}
+tabs.forEach(t => t.addEventListener('click', ()=>switchTab(t.dataset.tab)));
+
+// Resize handle
+let resizing=false, resizeStartY=0, resizeStartH=0;
+resizeBar.addEventListener('mousedown', e=>{
+  resizing=true; resizeStartY=e.clientY; resizeStartH=drawer.offsetHeight;
+  document.body.style.userSelect='none';
+});
+window.addEventListener('mousemove', e=>{
+  if(!resizing) return;
+  const delta = resizeStartY - e.clientY;
+  const newH  = Math.max(150, Math.min(resizeStartH+delta, window.innerHeight-80));
+  drawer.style.height = newH+'px';
+});
+window.addEventListener('mouseup', ()=>{ resizing=false; document.body.style.userSelect=''; });
+
+// ── Shell execution ───────────────────────────────────
+let termBusy = false;
+function termLog(text, cls=''){
+  const line = document.createElement('div');
+  line.className = cls;
+  line.textContent = text;
+  termOutput.appendChild(line);
+  termOutput.scrollTop = termOutput.scrollHeight;
+}
+async function runShell(cmd){
+  if(termBusy || !cmd.trim()) return;
+  termBusy = true; termRun.disabled = true;
+  termLog('$ '+cmd, 'term-cmd');
+  try{
+    const res = await fetch('/shell',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({command:cmd})});
+    const d = await res.json();
+    if(d.stdout) termLog(d.stdout);
+    if(d.stderr) termLog(d.stderr,'term-err');
+    if(d.error)  termLog('ERROR: '+d.error,'term-err');
+  }catch(e){ termLog('Connection error: '+e.message,'term-err'); }
+  finally{ termBusy=false; termRun.disabled=false; termInput.focus(); }
+}
+termRun.addEventListener('click',()=>{ runShell(termInput.value); termInput.value=''; });
+termInput.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ e.preventDefault(); runShell(termInput.value); termInput.value=''; }
+});
+
+// add CSS for term-cmd / term-err dynamically (no extra file needed)
+const termStyle = document.createElement('style');
+termStyle.textContent = '.term-cmd{color:#aef;}.term-err{color:#f55;}';
+document.head.appendChild(termStyle);
+
+// ── VPS File Upload ───────────────────────────────────
+const uploadZone = document.getElementById('upload-zone');
+const filePicker2= document.getElementById('file-picker');
+const uploadLog  = document.getElementById('upload-log');
+const uploadBtn  = document.getElementById('upload-btn');
+const uploadDest = document.getElementById('upload-dest');
+
+uploadZone.addEventListener('click',()=>filePicker2.click());
+uploadZone.addEventListener('dragover',e=>{e.preventDefault();uploadZone.classList.add('drag');});
+uploadZone.addEventListener('dragleave',()=>uploadZone.classList.remove('drag'));
+uploadZone.addEventListener('drop',e=>{e.preventDefault();uploadZone.classList.remove('drag');
+  if(e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files);});
+filePicker2.addEventListener('change',()=>{ if(filePicker2.files.length) uploadFiles(filePicker2.files); });
+uploadBtn.addEventListener('click',()=>{ if(filePicker2.files.length) uploadFiles(filePicker2.files); });
+
+async function uploadFiles(files){
+  for(const file of Array.from(files)){
+    const logEl = document.createElement('div');
+    logEl.className='upload-item';
+    logEl.innerHTML=`<span style="color:var(--c1)">⬆ ${esc(file.name)}</span> <span class="upload-status">…</span>`;
+    uploadLog.prepend(logEl);
+    const status = logEl.querySelector('.upload-status');
+    try{
+      const b64 = await new Promise((res,rej)=>{
+        const r=new FileReader(); r.onload=ev=>res(ev.target.result.split(',')[1]); r.onerror=rej;
+        r.readAsDataURL(file);
+      });
+      const dest = uploadDest.value.trim() || '/tmp/manifoldai/uploads/';
+      const resp = await fetch('/upload',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({filename:file.name, content_base64:b64, mime_type:file.type||'application/octet-stream', dest_dir:dest})});
+      const d = await resp.json();
+      if(d.error) throw new Error(d.error);
+      status.textContent='✓ saved to '+d.path; status.className='ok';
+    }catch(e){ status.textContent='✗ '+e.message; status.className='err'; }
+  }
+}
+
+// ── Memory panel ──────────────────────────────────────
+const memLog     = document.getElementById('mem-log');
+const memFacts   = document.getElementById('mem-facts');
+const memStatus  = document.getElementById('mem-status');
+const memSearch  = document.getElementById('mem-search');
+const memRefresh = document.getElementById('mem-refresh-btn');
+let memData = {log:[], facts:{}};
+
+async function refreshMemory(){
+  memStatus.textContent='loading…';
+  try{
+    const r = await fetch('/memory?limit=100');
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    memData = await r.json();
+    renderMemory(memSearch.value.trim().toLowerCase());
+    memStatus.textContent = `${(memData.log||[]).length} entries · ${Object.keys(memData.facts||{}).length} facts`;
+  }catch(e){ memStatus.textContent='⚠ '+e.message; }
+}
+memRefresh.addEventListener('click', refreshMemory);
+memSearch.addEventListener('input', ()=>renderMemory(memSearch.value.trim().toLowerCase()));
+
+function renderMemory(filter){
+  // Facts
+  const facts = memData.facts||{};
+  memFacts.innerHTML='';
+  Object.entries(facts).forEach(([k,v])=>{
+    const text = k+' '+v.value;
+    if(filter && !text.toLowerCase().includes(filter)) return;
+    const el=document.createElement('div'); el.className='mem-fact-item';
+    el.innerHTML=`<span class="mem-fact-key">${esc(k)}</span><span class="mem-fact-val">${esc(v.value)}</span>
+      <span class="mem-fact-ts">${v.ts||''}</span>`;
+    memFacts.appendChild(el);
+  });
+  // Log
+  const log = (memData.log||[]).slice().reverse();
+  memLog.innerHTML='';
+  log.forEach(e=>{
+    const text = e.content||'';
+    if(filter && !(text+e.role+JSON.stringify(e.tools||[])).toLowerCase().includes(filter)) return;
+    const el=document.createElement('div'); el.className='mem-log-item mem-role-'+e.role;
+    const tools=(e.tools||[]).map(t=>`<span class="mem-tool-badge">${esc(t.tool)}</span>`).join('');
+    el.innerHTML=`<div class="mem-log-meta"><span class="mem-role-lbl">${e.role}</span><span class="mem-ts">${esc(e.date||'')}</span></div>
+      <div class="mem-log-content">${esc(text.slice(0,300)+(text.length>300?'…':''))}</div>${tools?'<div class="mem-tools">'+tools+'</div>':''}`;
+    memLog.appendChild(el);
+  });
+  if(!memLog.children.length) memLog.innerHTML='<div style="color:var(--dim);padding:.6rem 1rem;font-size:.73rem">No entries match.</div>';
+}
+
+// Extra CSS for memory items
+const memStyle = document.createElement('style');
+memStyle.textContent=`
+#mem-body{flex:1;overflow-y:auto;padding:.6rem 1rem;min-height:0;display:flex;flex-direction:column;gap:.3rem;}
+.mem-section-hdr{font-size:.62rem;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;padding:.3rem 0 .15rem;}
+.mem-fact-item{display:flex;flex-wrap:wrap;gap:.3rem .5rem;padding:.3rem .5rem;background:rgba(57,255,20,.05);border-radius:5px;border-left:2px solid var(--c3);font-size:.73rem;}
+.mem-fact-key{color:var(--c3);font-weight:600;min-width:80px;}
+.mem-fact-val{color:var(--text);flex:1;}
+.mem-fact-ts{color:var(--dim);font-size:.62rem;align-self:flex-end;}
+.mem-log-item{padding:.35rem .5rem;border-radius:5px;font-size:.73rem;margin-bottom:.2rem;}
+.mem-role-user{background:rgba(0,255,255,.05);border-left:2px solid var(--c1);}
+.mem-role-assistant{background:rgba(191,0,255,.06);border-left:2px solid var(--c2);}
+.mem-log-meta{display:flex;gap:.6rem;align-items:center;margin-bottom:.18rem;}
+.mem-role-lbl{font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);font-weight:600;}
+.mem-ts{font-size:.62rem;color:var(--dim);}
+.mem-log-content{color:var(--text);white-space:pre-wrap;word-break:break-word;}
+.mem-tools{margin-top:.2rem;display:flex;flex-wrap:wrap;gap:.25rem;}
+.mem-tool-badge{font-size:.58rem;background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:4px;padding:.1rem .35rem;color:var(--dim);}
+`;
+document.head.appendChild(memStyle);
+
+// ── welcome ──────────────────────────────────────────
+setTimeout(()=>{
+  addMsg('ai',`Hello — I'm **ManifoldAI**, running locally on your machine.
+
+I have full access to your workspace and can:
+- 📂 **Read / write / create** files and directories
+- 🐍 **Execute** Python code and return the output
+- 🔧 **Run shell commands** — git, grep, find, build tools
+- 📎 **Accept file and image uploads** — drag & drop or click 📎
+- 🖼 **Analyse images** — screenshots, diagrams, photos (vision)
+- 🎨 **Generate images** from text — *"paint a cyberpunk city at dusk"*
+- 🖼→🖼 **Transform images** — remix with a prompt (img2img)
+- 🎬 **Animate images** — turn any photo into a short video clip
+- 📦 **GitHub** — read/write files, issues, PRs, search code
+
+**Primary model:** Ollama \`qwen2.5-coder:7b\` · **Fallback:** Gemini
+
+Attach a file or image with **📎**, or just ask me anything.`);
+},350);
+</script>
+</body>
+</html>
+

@@ -1,0 +1,108 @@
+🔄 Recovery token auto-cleanup started (every 5 minutes)
+🎮 Manifold Auth Server running on http://localhost:3000
+📝 Endpoints:
+   POST /api/auth/register
+   POST /api/auth/login
+   GET  /api/auth/validate
+   POST /api/auth/forgot-password
+   POST /api/auth/reset-password
+❌ Email transporter error: Error: Connection timeout
+    at SMTPConnection._formatError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:887:19)
+    at SMTPConnection._onError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:868:20)
+    at SMTPConnection._onConnectionError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:405:18)
+    at Timeout.<anonymous> (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:385:18)
+    at listOnTimeout (node:internal/timers:569:17)
+    at process.processTimers (node:internal/timers:512:7) {
+  code: 'ETIMEDOUT',
+  command: 'CONN'
+}
+Email send error: Error: Connection timeout
+    at SMTPConnection._formatError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:887:19)
+    at SMTPConnection._onError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:868:20)
+    at SMTPConnection._onConnectionError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:405:18)
+    at Timeout.<anonymous> (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:385:18)
+    at listOnTimeout (node:internal/timers:569:17)
+    at process.processTimers (node:internal/timers:512:7) {
+  code: 'ETIMEDOUT',
+  command: 'CONN'
+}
+Welcome email error: Error: Connection timeout
+    at SMTPConnection._formatError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:887:19)
+    at SMTPConnection._onError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:868:20)
+    at SMTPConnection._onConnectionError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:405:18)
+    at Timeout.<anonymous> (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:385:18)
+    at listOnTimeout (node:internal/timers:569:17)
+    at process.processTimers (node:internal/timers:512:7) {
+  code: 'ETIMEDOUT',
+  command: 'CONN'
+}
+Welcome email failed: Error: Connection timeout
+    at SMTPConnection._formatError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:887:19)
+    at SMTPConnection._onError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:868:20)
+    at SMTPConnection._onConnectionError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:405:18)
+    at Timeout.<anonymous> (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:385:18)
+    at listOnTimeout (node:internal/timers:569:17)
+    at process.processTimers (node:internal/timers:512:7) {
+  code: 'ETIMEDOUT',
+  command: 'CONN'
+}
+Email send error: Error: Connection timeout
+    at SMTPConnection._formatError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:887:19)
+    at SMTPConnection._onError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:868:20)
+    at SMTPConnection._onConnectionError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:405:18)
+    at Timeout.<anonymous> (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:385:18)
+    at listOnTimeout (node:internal/timers:569:17)
+    at process.processTimers (node:internal/timers:512:7) {
+  code: 'ETIMEDOUT',
+  command: 'CONN'
+}
+Welcome email error: Error: Connection timeout
+    at SMTPConnection._formatError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:887:19)
+    at SMTPConnection._onError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:868:20)
+    at SMTPConnection._onConnectionError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:405:18)
+    at Timeout.<anonymous> (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:385:18)
+    at listOnTimeout (node:internal/timers:569:17)
+    at process.processTimers (node:internal/timers:512:7) {
+  code: 'ETIMEDOUT',
+  command: 'CONN'
+}
+Welcome email failed: Error: Connection timeout
+    at SMTPConnection._formatError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:887:19)
+    at SMTPConnection._onError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:868:20)
+    at SMTPConnection._onConnectionError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:405:18)
+    at Timeout.<anonymous> (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:385:18)
+    at listOnTimeout (node:internal/timers:569:17)
+    at process.processTimers (node:internal/timers:512:7) {
+  code: 'ETIMEDOUT',
+  command: 'CONN'
+}
+Email send error: Error: Connection timeout
+    at SMTPConnection._formatError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:887:19)
+    at SMTPConnection._onError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:868:20)
+    at SMTPConnection._onConnectionError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:405:18)
+    at Timeout.<anonymous> (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:385:18)
+    at listOnTimeout (node:internal/timers:569:17)
+    at process.processTimers (node:internal/timers:512:7) {
+  code: 'ETIMEDOUT',
+  command: 'CONN'
+}
+Welcome email error: Error: Connection timeout
+    at SMTPConnection._formatError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:887:19)
+    at SMTPConnection._onError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:868:20)
+    at SMTPConnection._onConnectionError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:405:18)
+    at Timeout.<anonymous> (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:385:18)
+    at listOnTimeout (node:internal/timers:569:17)
+    at process.processTimers (node:internal/timers:512:7) {
+  code: 'ETIMEDOUT',
+  command: 'CONN'
+}
+Welcome email failed: Error: Connection timeout
+    at SMTPConnection._formatError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:887:19)
+    at SMTPConnection._onError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:868:20)
+    at SMTPConnection._onConnectionError (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:405:18)
+    at Timeout.<anonymous> (/var/www/kensgames.com/server/node_modules/nodemailer/lib/smtp-connection/index.js:385:18)
+    at listOnTimeout (node:internal/timers:569:17)
+    at process.processTimers (node:internal/timers:512:7) {
+  code: 'ETIMEDOUT',
+  command: 'CONN'
+}

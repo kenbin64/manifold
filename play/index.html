@@ -1086,12 +1086,12 @@
       starfighter: {
         name: 'Alien Space Attack',
         color: '#ffdd00',
-        soloUrl: '/starfighter/game.html?mode=solo',
-        gameUrl: '/starfighter/game.html',
+        soloUrl: '/starfighter/',
+        gameUrl: '/starfighter/',
         minPlayers: 1, maxPlayers: 4,
         defaultMaxPlayers: 4,
         allowBots: true,
-        supportsSoloSetup: true,
+        supportsSoloSetup: false,
         supportsAudioPrefs: true,
         launchParams: (session, me, myEmoji, wsUrl) => ({
           session: session.session_id,

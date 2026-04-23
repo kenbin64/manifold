@@ -34,7 +34,7 @@ const GAMES = {
   brickbreaker3d: { name: 'BrickBreaker 3D', maxPlayers: 4, minPlayers: 1, lobbyPath: '/play/?game=brickbreaker3d', gamePath: '/brickbreaker3d/game.html' },
   '4dconnect': { name: '4D Connect', maxPlayers: 2, minPlayers: 2, lobbyPath: '/play/?game=4dconnect', gamePath: '/4dconnect/game.html' },
   '4dtictactoe': { name: '4D Connect', maxPlayers: 2, minPlayers: 2, lobbyPath: '/play/?game=4dconnect', gamePath: '/4dconnect/game.html' }, // legacy alias -> 4dconnect
-  starfighter: { name: 'Starfighter', maxPlayers: 4, minPlayers: 1, lobbyPath: '/play/?game=starfighter', gamePath: '/starfighter/game.html' },
+  starfighter: { name: 'Starfighter', maxPlayers: 4, minPlayers: 1, lobbyPath: '/play/?game=starfighter', gamePath: '/starfighter/' },
   assemble: { name: 'Assemble', maxPlayers: 4, minPlayers: 1, lobbyPath: '/play/?game=assemble', gamePath: '/assemble/game.html' },
 };
 

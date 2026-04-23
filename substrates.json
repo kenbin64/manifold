@@ -44,7 +44,7 @@
       "moduleCount": 1,
       "boundary": "closed",
       "paths": [
-        "4dtictactoe/*.js"
+        "4dconnect/*.js"
       ],
       "description": "4D TicTacToe substrate."
     },

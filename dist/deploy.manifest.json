@@ -64,9 +64,9 @@
       ]
     },
     {
-      "step": "deploy_game_4dtictactoe",
-      "source": "4dtictactoe/",
-      "destination": "/var/www/kensgames.com/public/4dtictactoe/",
+      "step": "deploy_game_4dconnect",
+      "source": "4dconnect/",
+      "destination": "/var/www/kensgames.com/public/4dconnect/",
       "type": "rsync",
       "excludes": [
         "*.test.js",

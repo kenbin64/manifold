@@ -50,7 +50,7 @@ const glbNMat = new THREE.Matrix3();
 (function loadConnect4Glb() {
   if (typeof THREE.GLTFLoader !== 'function') { glbOverlay = makeSchwartzShell(); return; }
   const loader = new THREE.GLTFLoader();
-  loader.load('/4dtictactoe/assets/model/connect4.glb', gltf => {
+  loader.load('/4dconnect/assets/model/connect4.glb', gltf => {
     const root = gltf.scene || gltf.scenes[0];
     // Auto-fit the model into the lattice volume.
     const box = new THREE.Box3().setFromObject(root);
@@ -546,4 +546,4 @@ fetch('./manifold.game.json').then(r => r.json()).then(cfg => {
   setPreloadProgress(30);
   setTimeout(() => { setPreloadProgress(100); document.getElementById('pre-msg').textContent = 'READY'; setTimeout(finishPreload, 400); }, 400);
 }).catch(err => { console.error('manifold.game.json load failed', err); setPreloadProgress(100); finishPreload(); });
-if (typeof ManifoldBridge !== 'undefined') ManifoldBridge.init({ id: '4dtictactoe', version: '2.0.0', x: 4, y: 4, exposes: () => ({ currentPlayer, scores: [TS.score(P1), TS.score(P2)], isGameOver, filled: BM.filled(), scenario: currentScenario && currentScenario.id }) });
+if (typeof ManifoldBridge !== 'undefined') ManifoldBridge.init({ id: '4dconnect', version: '2.0.0', x: 4, y: 4, exposes: () => ({ currentPlayer, scores: [TS.score(P1), TS.score(P2)], isGameOver, filled: BM.filled(), scenario: currentScenario && currentScenario.id }) });

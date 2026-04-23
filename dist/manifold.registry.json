@@ -1,6 +1,6 @@
 {
   "_schema": "1.0",
-  "_compiled": "2026-04-22T10:51:48.582311+00:00",
+  "_compiled": "2026-04-23T03:30:23.827211+00:00",
   "portal": "kensgames-portal",
   "domain": "kensgames.com",
   "dimensions": {
@@ -78,7 +78,7 @@
     {
       "id": "4dconnect",
       "name": "4D Connect",
-      "version": "1.0.0",
+      "version": "2.0.0",
       "path": "4dconnect/",
       "entry": "game.html",
       "lobby": "lobby/",
@@ -89,10 +89,10 @@
         "z": 24
       },
       "substrates": [
-        "board",
-        "moves",
-        "win",
-        "render"
+        "plane",
+        "height",
+        "render",
+        "_note"
       ],
       "bridge": "window.__MANIFOLD__",
       "deploy": {

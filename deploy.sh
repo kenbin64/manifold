@@ -22,10 +22,15 @@ PM2_LOBBY="kensgames-lobby"
 DO_BACKUP=true
 DO_RESTART=true
 
+DO_COMPILE=true
+DO_REGISTER=true
+
 # Parse flags
 for arg in "$@"; do
-  [[ "$arg" == "--no-backup"  ]] && DO_BACKUP=false
-  [[ "$arg" == "--no-restart" ]] && DO_RESTART=false
+  [[ "$arg" == "--no-backup"   ]] && DO_BACKUP=false
+  [[ "$arg" == "--no-restart"  ]] && DO_RESTART=false
+  [[ "$arg" == "--no-compile"  ]] && DO_COMPILE=false
+  [[ "$arg" == "--no-register" ]] && DO_REGISTER=false
 done
 
 # ── Colors ───────────────────────────────────────────────────────────────────
@@ -56,6 +61,23 @@ if [[ -f "$LOGROTATE_SRC" ]]; then
   echo -e "${G}  ✓ Logging policy installed: $LOGROTATE_DST${NC}"
 else
   echo -e "${Y}  ! Logging policy source missing: $LOGROTATE_SRC${NC}"
+fi
+
+# ── [0] Manifold Compile (portal → dist/) ────────────────────────────────────
+# Emits dist/manifold.registry.json, dist/deploy.manifest.json,
+# and dist/tetracube.ingest.json (staged for tetracubedb.com registration).
+if $DO_COMPILE; then
+  echo -e "${Y}[0/6] Compiling manifold…${NC}"
+  if command -v python3 >/dev/null 2>&1 && [[ -f "$SRC/engine/manifold_compiler.py" ]]; then
+    (cd "$SRC" && python3 engine/manifold_compiler.py) || {
+      echo -e "${R}  ✗ compile failed — aborting deploy${NC}"; exit 1;
+    }
+    echo -e "${G}  ✓ dist/manifold.registry.json, deploy.manifest.json, tetracube.ingest.json${NC}"
+  else
+    echo -e "${Y}  ! python3 or compiler missing — skipping compile${NC}"
+  fi
+else
+  echo "[0/6] Compile skipped"
 fi
 
 # ── [1] Backup ───────────────────────────────────────────────────────────────
@@ -200,6 +222,29 @@ if $DO_RESTART; then
   fi
 else
   echo "[4/5] Service restart skipped"
+fi
+
+# ── [4.5] Register games with TetracubeDB ────────────────────────────────
+# Reads TETRACUBE_CLIENT_ID / TETRACUBE_API_KEY / TETRACUBE_API_URL from
+# $SRC/server/.env (if present) and POSTs dist/tetracube.ingest.json cells
+# to the TetracubeDB /v1/cell API. Non-fatal on missing creds or offline API.
+if $DO_REGISTER; then
+  echo -e "${Y}[4.5/5] Registering with TetracubeDB…${NC}"
+  INGEST="$SRC/dist/tetracube.ingest.json"
+  if [[ ! -f "$INGEST" ]]; then
+    echo -e "${Y}  ! $INGEST missing — run compile first${NC}"
+  elif ! command -v python3 >/dev/null 2>&1; then
+    echo -e "${Y}  ! python3 missing — skipping registration${NC}"
+  else
+    ENV_FILE="$SRC/server/.env"
+    if [[ -f "$ENV_FILE" ]]; then
+      set -a; . "$ENV_FILE"; set +a
+    fi
+    (cd "$SRC" && python3 engine/manifold_compiler.py --push-only) || \
+      echo -e "${Y}  ! tetracubedb push returned non-zero — see log above${NC}"
+  fi
+else
+  echo "[4.5/5] TetracubeDB registration skipped"
 fi
 
 # ── [5] Verify ───────────────────────────────────────────────────────────

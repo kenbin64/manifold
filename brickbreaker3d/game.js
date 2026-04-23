@@ -388,8 +388,10 @@ function startGame(mode) {
 
     setupPlayers();
 
-    document.getElementById('menu').classList.add('hidden');
-    document.getElementById('hud').style.display = 'block';
+    const menu = document.getElementById('menu');
+    if (menu) menu.classList.add('hidden');
+    const hud = document.getElementById('hud');
+    if (hud) hud.style.display = 'block';
     updateHUD();
 }
 
@@ -1040,14 +1042,18 @@ function updateHUD() {
 
 function endGame(msg) {
     gameActive = false;
-    document.getElementById('menu').classList.remove('hidden');
-    document.getElementById('hud').style.display = 'none';
-    if (msg) {
-        // Brief flash of result
-        const hud = document.getElementById('hud');
+    const menu = document.getElementById('menu');
+    if (menu) menu.classList.remove('hidden');
+    const hud = document.getElementById('hud');
+    if (hud) hud.style.display = 'none';
+    if (msg && hud) {
         hud.style.display = 'block';
         hud.innerHTML = `<div style="font-size:24px;color:#ffcc00">${msg}</div>`;
         setTimeout(() => { hud.style.display = 'none'; }, 4000);
+    }
+    // Return to the unified launcher when no in-page menu is present.
+    if (!menu) {
+        setTimeout(() => { window.location.href = '/play/?game=brickbreaker3d'; }, msg ? 2500 : 300);
     }
 }
 

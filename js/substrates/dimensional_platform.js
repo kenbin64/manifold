@@ -308,7 +308,7 @@ const DimensionalPlatform = (function () {
   const APPS = [
     // Games
     { label: 'starfighter', z: 0.35, role: 'game-3d', path: '/starfighter/' },
-    { label: 'fasttrack', z: 0.28, role: 'game-board', path: '/fasttrack/lobby/' },
+    { label: 'fasttrack', z: 0.28, role: 'game-board', path: '/play/?game=fasttrack' },
     { label: 'brickbreaker3d', z: 0.18, role: 'game-3d', path: '/brickbreaker3d/' },
     { label: '4d-tictactoe', z: 0.12, role: 'game-puzzle', path: '/4dconnect/' },
     { label: 'assemble', z: 0.08, role: 'game-puzzle', path: '/assemble/' },

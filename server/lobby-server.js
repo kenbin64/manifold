@@ -171,18 +171,18 @@ function getWsByUserId(userId) {
 // ── Registered game types ──
 const GAME_REGISTRY = {
   // Standard entry point: every game uses game.html as canonical
-  fasttrack: { name: 'Fast Track', path: '/fasttrack/game.html', lobby: '/fasttrack/lobby/', maxPlayers: 6, type: 'turn' },
-  brickbreaker3d: { name: 'BrickBreaker 3D', path: '/brickbreaker3d/game.html', lobby: '/brickbreaker3d/lobby/', maxPlayers: 4, type: 'realtime' },
-  brickbreaker: { name: 'BrickBreaker 3D', path: '/brickbreaker3d/game.html', lobby: '/brickbreaker3d/lobby/', maxPlayers: 4, type: 'realtime' }, // legacy alias
-  starfighter: { name: 'Starfighter', path: '/starfighter/game.html', lobby: '/starfighter/lobby/', maxPlayers: 6, type: 'realtime' },
-  assemble: { name: 'Assemble', path: '/assemble/game.html', lobby: '/assemble/lobby/', maxPlayers: 4, type: 'realtime' },
-  '4dconnect': { name: '4D Connect', path: '/4dconnect/game.html', lobby: '/4dconnect/lobby/', maxPlayers: 2, type: 'turn' },
-  chomp: { name: 'Chomp! Wally', path: '/chomp/game.html', lobby: '/chomp/lobby/', maxPlayers: 1, type: 'solo' },
+  fasttrack: { name: 'Fast Track', path: '/fasttrack/game.html', lobby: '/play/?game=fasttrack', maxPlayers: 6, type: 'turn' },
+  brickbreaker3d: { name: 'BrickBreaker 3D', path: '/brickbreaker3d/game.html', lobby: '/play/?game=brickbreaker3d', maxPlayers: 4, type: 'realtime' },
+  brickbreaker: { name: 'BrickBreaker 3D', path: '/brickbreaker3d/game.html', lobby: '/play/?game=brickbreaker3d', maxPlayers: 4, type: 'realtime' }, // legacy alias
+  starfighter: { name: 'Starfighter', path: '/starfighter/game.html', lobby: '/play/?game=starfighter', maxPlayers: 6, type: 'realtime' },
+  assemble: { name: 'Assemble', path: '/assemble/game.html', lobby: '/play/?game=assemble', maxPlayers: 4, type: 'realtime' },
+  '4dconnect': { name: '4D Connect', path: '/4dconnect/game.html', lobby: '/play/?game=4dconnect', maxPlayers: 2, type: 'turn' },
+  chomp: { name: 'Chomp! Wally', path: '/chomp/game.html', lobby: '/play/?game=chomp', maxPlayers: 1, type: 'solo' },
   connectiv: { name: 'ConnectIV', path: '/connectiv/index.html', lobby: '/connectiv/lobby.html', maxPlayers: 2, type: 'turn' },
   swartzdia: { name: 'Swartz Diamond', path: '/swartzdia/index.html', lobby: '/swartzdia/lobby.html', maxPlayers: 4, type: 'turn' },
   cubemarble: { name: 'Cube Marble', path: '/cubemarble/index.html', lobby: '/cubemarble/lobby.html', maxPlayers: 4, type: 'turn' },
-  tictactoe: { name: '4D Connect', path: '/4dconnect/game.html', lobby: '/4dconnect/lobby/', maxPlayers: 2, type: 'turn' }, // legacy alias
-  '4dtictactoe': { name: '4D Connect', path: '/4dconnect/game.html', lobby: '/4dconnect/lobby/', maxPlayers: 2, type: 'turn' }, // legacy alias -> 4dconnect
+  tictactoe: { name: '4D Connect', path: '/4dconnect/game.html', lobby: '/play/?game=4dconnect', maxPlayers: 2, type: 'turn' }, // legacy alias
+  '4dtictactoe': { name: '4D Connect', path: '/4dconnect/game.html', lobby: '/play/?game=4dconnect', maxPlayers: 2, type: 'turn' }, // legacy alias -> 4dconnect
 };
 
 function resetLobbyAcceptance(session) {

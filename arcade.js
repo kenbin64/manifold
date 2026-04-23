@@ -9,11 +9,11 @@ const LOBBY_WS = location.protocol === 'https:'
 
 // Fallback game table — overwritten at runtime by loadRegistry()
 const GAMES = {
-    fasttrack: { title: 'FastTrack', url: '/fasttrack/lobby/', multiplayer: true },
-    brickbreaker3d: { title: 'BrickBreaker 3D', url: '/brickbreaker3d/lobby/', multiplayer: true },
-    starfighter: { title: 'Starfighter', url: '/starfighter/lobby/', multiplayer: false },
-    '4dconnect': { title: '4D Connect', url: '/4dconnect/lobby/', multiplayer: true },
-    assemble: { title: 'Assemble', url: '/assemble/lobby/', multiplayer: false },
+    fasttrack: { title: 'FastTrack', url: '/play/?game=fasttrack', multiplayer: true },
+    brickbreaker3d: { title: 'BrickBreaker 3D', url: '/play/?game=brickbreaker3d', multiplayer: true },
+    starfighter: { title: 'Starfighter', url: '/play/?game=starfighter', multiplayer: false },
+    '4dconnect': { title: '4D Connect', url: '/play/?game=4dconnect', multiplayer: true },
+    assemble: { title: 'Assemble', url: '/play/?game=assemble', multiplayer: false },
 };
 
 // ── MANIFOLD REGISTRY ─────────────────────────────────────────
@@ -218,7 +218,7 @@ function playBrickBreaker() {
 
 // Fast Track — always go to the billiard lobby
 function playFastTrack() {
-    window.location.href = '/fasttrack/lobby/';
+    window.location.href = '/play/?game=fasttrack';
 }
 
 function hideFTGuest() {
@@ -227,7 +227,7 @@ function hideFTGuest() {
 }
 
 function playFastTrackAI() {
-    window.location.href = '/fasttrack/lobby/';
+    window.location.href = '/play/?game=fasttrack';
 }
 
 // ── GAME LOBBY ACTIONS ───────────────────────────────────────

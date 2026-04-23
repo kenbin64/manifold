@@ -30,12 +30,12 @@ const TETRACUBE_STRICT = typeof TetracubeClient.isStrict === 'function' && Tetra
 
 // Game manifest — max players, lobby path, game launch path
 const GAMES = {
-  fasttrack: { name: 'FastTrack', maxPlayers: 4, minPlayers: 2, lobbyPath: '/fasttrack/lobby/', gamePath: '/fasttrack/game.html' },
-  brickbreaker3d: { name: 'BrickBreaker 3D', maxPlayers: 4, minPlayers: 1, lobbyPath: '/brickbreaker3d/lobby/', gamePath: '/brickbreaker3d/game.html' },
-  '4dconnect': { name: '4D Connect', maxPlayers: 2, minPlayers: 2, lobbyPath: '/4dconnect/lobby/', gamePath: '/4dconnect/game.html' },
-  '4dtictactoe': { name: '4D Connect', maxPlayers: 2, minPlayers: 2, lobbyPath: '/4dconnect/lobby/', gamePath: '/4dconnect/game.html' }, // legacy alias -> 4dconnect
-  starfighter: { name: 'Starfighter', maxPlayers: 4, minPlayers: 1, lobbyPath: '/starfighter/lobby/', gamePath: '/starfighter/game.html' },
-  assemble: { name: 'Assemble', maxPlayers: 4, minPlayers: 1, lobbyPath: '/assemble/lobby/', gamePath: '/assemble/game.html' },
+  fasttrack: { name: 'FastTrack', maxPlayers: 4, minPlayers: 2, lobbyPath: '/play/?game=fasttrack', gamePath: '/fasttrack/game.html' },
+  brickbreaker3d: { name: 'BrickBreaker 3D', maxPlayers: 4, minPlayers: 1, lobbyPath: '/play/?game=brickbreaker3d', gamePath: '/brickbreaker3d/game.html' },
+  '4dconnect': { name: '4D Connect', maxPlayers: 2, minPlayers: 2, lobbyPath: '/play/?game=4dconnect', gamePath: '/4dconnect/game.html' },
+  '4dtictactoe': { name: '4D Connect', maxPlayers: 2, minPlayers: 2, lobbyPath: '/play/?game=4dconnect', gamePath: '/4dconnect/game.html' }, // legacy alias -> 4dconnect
+  starfighter: { name: 'Starfighter', maxPlayers: 4, minPlayers: 1, lobbyPath: '/play/?game=starfighter', gamePath: '/starfighter/game.html' },
+  assemble: { name: 'Assemble', maxPlayers: 4, minPlayers: 1, lobbyPath: '/play/?game=assemble', gamePath: '/assemble/game.html' },
 };
 
 // Session TTL: 2 hours if never started, auto-purge on access

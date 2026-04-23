@@ -8,7 +8,7 @@
  * Usage:
  *   <script src="/js/substrates/game_session_substrate.js"></script>
  *   <script src="/js/game_landing.js"></script>
- *   <script> KG_LANDING.init('fasttrack', '/fasttrack/lobby/'); </script>
+ *   <script> KG_LANDING.init('fasttrack', '/play/?game=fasttrack'); </script>
  */
 (function (global) {
   'use strict';

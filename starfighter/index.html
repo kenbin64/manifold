@@ -24,9 +24,14 @@
       }
     })();
   </script>
-  <!-- Auth enforcement: sign-in required (invite-code guests allowed) -->
+  <!-- Auth enforcement: required for multiplayer; public solo bypasses gate. -->
   <script src="/js/substrates/profile_gate.js"></script>
-  <script>KG_GATE.require({ allowGuest: true });</script>
+  <script>
+    (function () {
+      var mode = new URLSearchParams(window.location.search).get('mode');
+      if (mode !== 'solo') KG_GATE.require({ allowGuest: true });
+    })();
+  </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StarFighter ï¿½ Defend the Manifold | KensGames</title>

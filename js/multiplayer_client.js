@@ -4,7 +4,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  *
  * Single client library used by ALL games: FastTrack, BrickBreaker3D,
- * Starfighter, ConnectIV, SwartzDiamond, CubeMarble, TicTacToe.
+ * Starfighter, ConnectIV, SwartzDiamond, CubeMarble, 4D Connect.
  *
  * Connects to the unified lobby-server.js on wss://kensgames.com/ws.
  *

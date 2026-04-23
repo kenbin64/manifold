@@ -96,7 +96,7 @@ python3 engine/manifold_compiler.py
   ✓ portal config: kensgames-portal v1.0.0
   ✓ FastTrack (2.1.0)  z=135
   ✓ BrickBreaker 3D (1.0.0)  z=44
-  ✓ 4D Tic-Tac-Toe (1.0.0)  z=24
+  ✓ 4D Connect (1.0.0)  z=24
   ✓ StarFighter (1.0.0)  z=60
   ✓ Assemble (1.0.0)  z=40
 

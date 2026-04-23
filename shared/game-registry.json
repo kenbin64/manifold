@@ -16,8 +16,8 @@
     },
     {
       "id": "tictactoe",
-      "name": "4D TicTacToe",
-      "portalTitle": "4D TicTacToe",
+      "name": "4D Connect",
+      "portalTitle": "4D Connect",
       "playPath": "/4dconnect/index.html",
       "lobbyPath": "/lobby/game.html?game=tictactoe",
       "maxPlayers": 4,

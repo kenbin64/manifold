@@ -161,7 +161,7 @@ If `deploy.manifest.json` contains a game where `z ≠ x * y`, **halt and alert*
 │   └── ...
 ├── fasttrack/                  ← FastTrack game
 ├── brickbreaker3d/             ← BrickBreaker 3D
-├── 4dconnect/                ← 4D Tic-Tac-Toe
+├── 4dconnect/                ← 4D Connect
 ├── starfighter/                ← StarFighter
 ├── assemble/                   ← Assemble
 ├── server/                     ← Node.js auth + lobby server
@@ -278,7 +278,7 @@ echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) deploy-complete" \
 - Pure static — no server needed
 - Uses 9 shared substrate pattern; verify `game.js` is present
 
-### 4D Tic-Tac-Toe
+### 4D Connect
 - Single `index.html` — if file is present and non-empty, deployment succeeded
 
 ### Assemble

@@ -77,7 +77,7 @@
     },
     {
       "id": "4dconnect",
-      "name": "4D Tic-Tac-Toe",
+      "name": "4D Connect",
       "version": "1.0.0",
       "path": "4dconnect/",
       "entry": "game.html",

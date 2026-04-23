@@ -62,7 +62,7 @@
     },
     {
       "id": "4dconnect",
-      "name": "4D Tic-Tac-Toe",
+      "name": "4D Connect",
       "path": "4dconnect/",
       "manifold": "4dconnect/manifold.game.json",
       "entry": "4dconnect/game.html",

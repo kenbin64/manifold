@@ -46,7 +46,7 @@
       "paths": [
         "4dconnect/*.js"
       ],
-      "description": "4D TicTacToe substrate."
+      "description": "4D Connect substrate."
     },
     {
       "name": "assemble",

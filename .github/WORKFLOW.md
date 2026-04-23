@@ -35,7 +35,7 @@
 │   └── kensgames.db           ← SQLite file — VPS only, never committed
 │
 ├── fasttrack/            ← FastTrack multiplayer game
-├── 4dconnect/          ← 4D Tic-Tac-Toe
+├── 4dconnect/          ← 4D Connect
 ├── brickbreaker3d/       ← BrickBreaker 3D
 ├── starfighter/          ← StarFighter
 ├── assemble/             ← Assemble

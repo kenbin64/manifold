@@ -19,13 +19,13 @@
     '/': {
       sectionId: null,
       title: 'KensGames — Free Arcade Games | kensgames.com',
-      description: 'KensGames — Play FastTrack, BrickBreaker 3D, Alien Space Attack, 4D TicTacToe and Assemble. Free browser games, no installs, no ads. Powered by a geometry-driven engine built from scratch.',
+      description: 'KensGames — Play FastTrack, BrickBreaker 3D, Alien Space Attack, 4D Connect and Assemble. Free browser games, no installs, no ads. Powered by a geometry-driven engine built from scratch.',
       ogImage: '/assets/masterImageFile/logo_thumbnail.png'
     },
     '/games': {
       sectionId: 'games',
       title: 'Free Arcade Games | KensGames',
-      description: 'Five free browser games — FastTrack, BrickBreaker 3D, Alien Space Attack, 4D TicTacToe, Assemble. No installs, no ads, no pay-to-win.',
+      description: 'Five free browser games — FastTrack, BrickBreaker 3D, Alien Space Attack, 4D Connect, Assemble. No installs, no ads, no pay-to-win.',
       ogImage: '/assets/masterImageFile/logo_thumbnail.png'
     },
     '/games/fasttrack': {
@@ -48,8 +48,8 @@
     },
     '/games/tictactoe': {
       sectionId: 'game-tictactoe',
-      title: '4D TicTacToe — Free Strategy Game | KensGames',
-      description: 'TicTacToe in three and four dimensions. A 3x3x3x3 hypercube with 76 winning lines. Solo or multiplayer. Free in your browser.',
+      title: '4D Connect — Free Strategy Game | KensGames',
+      description: '4D Connect in three and four dimensions. A 3x3x3x3 hypercube with 76 winning lines. Solo or multiplayer. Free in your browser.',
       ogImage: '/assets/masterImageFile/manifold.png'
     },
     '/games/assemble': {

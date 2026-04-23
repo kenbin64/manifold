@@ -1434,10 +1434,11 @@
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       let code = '';
       for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+      const join = (url, qs) => url + (url.indexOf('?') === -1 ? '?' : '&') + qs;
       if (game.lobbyUrl) {
-        window.location.href = game.lobbyUrl + '?create=' + code;
+        window.location.href = join(game.lobbyUrl, 'create=' + code);
       } else {
-        window.location.href = game.url + '?mode=private&code=' + code + '&host=1';
+        window.location.href = join(game.url, 'mode=private&code=' + code + '&host=1');
       }
     }
 

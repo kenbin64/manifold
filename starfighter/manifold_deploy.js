@@ -53,10 +53,17 @@ const bundle = parts.join(''), bS = stamp(Buffer.from(bundle));
 const bGz = zlib.gzipSync(Buffer.from(bundle), { level: 9 });
 console.log(`y (manifold): ${bS.hash} field=${bS.field.toFixed(6)} w=${bS.w.toFixed(2)}`);
 
-// z: rewrite HTML
+// z: rewrite HTML — strip only scripts that are in the bundle (X set);
+// preserve non-bundled helpers like /js/substrates/profile_gate.js.
+const BUNDLED_BASENAMES = new Set(X.map(([p]) => path.basename(p)));
+BUNDLED_BASENAMES.add('bundle.js');
+BUNDLED_BASENAMES.add('starfighter.bundle.js');
 let html = fs.readFileSync(srcHtml, 'utf8');
 const origN = (html.match(/<script src="[^"]*"/g) || []).length;
-html = html.replace(/<script src="[^"]*\.js[^"]*"><\/script>\s*\n?/g, '');
+html = html.replace(/<script src="([^"]+\.js[^"]*)"><\/script>\s*\n?/g, (m, src) => {
+  const base = path.basename(src.split('?')[0]);
+  return BUNDLED_BASENAMES.has(base) ? '' : m;
+});
 html = html.replace('</body>', `<script src="starfighter.bundle.js?v=${bS.hash}"></script>\n</body>`);
 const hGz = zlib.gzipSync(Buffer.from(html), { level: 9 });
 console.log(`z (artifact): bundle ${fmt(bundle.length)}→${fmt(bGz.length)} | html ${fmt(html.length)}→${fmt(hGz.length)} | ${origN}→1 scripts`);

@@ -39,6 +39,9 @@ Chomp!WallyTheCairnsCrocodileAdventure/
 starfighter/nginx_starfighter.conf
 4DTicTacToe/assets/models/*.glb
 
+# Local-only archival snapshots of pre-stub lobby pages
+*.legacy
+
 # Electron/desktop build outputs and wrappers — not needed in GitHub
 starfighter/downloads/
 downloads/

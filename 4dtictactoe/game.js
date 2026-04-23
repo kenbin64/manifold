@@ -38,37 +38,178 @@ const saturn = makeSaturn();
 // Procedural gas giant -- replaces jupiter.glb (3.5 MB). Banded vertex colors, same style as makeSaturn.
 function makeJupiter() { const g = new THREE.SphereGeometry(7, 48, 32); const cols = new Float32Array(g.attributes.position.count * 3); for (let i = 0; i < g.attributes.position.count; i++) { const y = g.attributes.position.getY(i); const band = Math.sin(y * 2.6) * 0.5 + 0.5; const storm = Math.sin(y * 1.1 + Math.cos(y * 5.2) * 1.8) * 0.5 + 0.5; cols[i * 3] = 0.82 + storm * .12 - band * .08; cols[i * 3 + 1] = 0.58 + band * .18; cols[i * 3 + 2] = 0.30 + storm * .10; } g.setAttribute('color', new THREE.BufferAttribute(cols, 3)); const m = new THREE.Mesh(g, new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 10 })); m.position.set(-75, -18, -80); scene.add(m); return m; }
 const jupiter = makeJupiter();
-// Procedural Schwartz-P shell -- replaces connect4.glb (27.4 MB). IS the Expression m=x*y*z the manifold is named after.
-function makeSchwartzShell() { const g = new THREE.IcosahedronGeometry(6, 6), pos = g.attributes.position, k = 0.55; for (let i = 0; i < pos.count; i++) { const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i); const d = 0.45 * (Math.cos(k * x) + Math.cos(k * y) + Math.cos(k * z)) / 3; const r = Math.sqrt(x * x + y * y + z * z) || 1; pos.setXYZ(i, x * (1 + d / r), y * (1 + d / r), z * (1 + d / r)); } g.computeVertexNormals(); const m = new THREE.Mesh(g, new THREE.MeshPhysicalMaterial({ color: 0x1a2255, emissive: 0x08083a, metalness: 0.85, roughness: 0.08, transparent: true, opacity: 0.38, envMap, envMapIntensity: 1.8, side: THREE.DoubleSide, depthWrite: false })); m.renderOrder = -1; m.position.y = -0.5; scene.add(m); return m; }
-const glbOverlay = makeSchwartzShell();
-const CELL = 2.8, BALL_R = 0.40;
-const latticeGroup = new THREE.Group(); scene.add(latticeGroup);
+// Procedural Schwartz-P shell -- fallback if connect4.glb fails to load.
+function makeSchwartzShell() { const g = new THREE.IcosahedronGeometry(6, 6), pos = g.attributes.position, k = 0.55; for (let i = 0; i < pos.count; i++) { const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i); const d = 0.45 * (Math.cos(k * x) + Math.cos(k * y) + Math.cos(k * z)) / 3; const r = Math.sqrt(x * x + y * y + z * z) || 1; pos.setXYZ(i, x * (1 + d / r), y * (1 + d / r), z * (1 + d / r)); } g.computeVertexNormals(); const m = new THREE.Mesh(g, new THREE.MeshPhysicalMaterial({ color: 0x1a2255, emissive: 0x08083a, metalness: 0.6, roughness: 0.35, transparent: true, opacity: 0.38, side: THREE.DoubleSide, depthWrite: false })); m.renderOrder = -1; scene.add(m); return m; }
+let glbOverlay = null;
+const glbColliders = []; // populated after GLB loads -- used as hard-body collider for the ball.
+const glbRay = new THREE.Raycaster();
+const glbDir = new THREE.Vector3();
+const glbN = new THREE.Vector3();
+const glbNMat = new THREE.Matrix3();
+// Load the real connect4.glb manifold and use it as the visible structure.
+(function loadConnect4Glb() {
+  if (typeof THREE.GLTFLoader !== 'function') { glbOverlay = makeSchwartzShell(); return; }
+  const loader = new THREE.GLTFLoader();
+  loader.load('/4dtictactoe/assets/model/connect4.glb', gltf => {
+    const root = gltf.scene || gltf.scenes[0];
+    // Auto-fit the model into the lattice volume.
+    const box = new THREE.Box3().setFromObject(root);
+    const size = new THREE.Vector3(); box.getSize(size);
+    const center = new THREE.Vector3(); box.getCenter(center);
+    const targetSize = CELL * (G - 1) * 1.05;
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    const scl = targetSize / maxDim;
+    root.scale.setScalar(scl);
+    root.position.set(-center.x * scl, -center.y * scl + 0.5, -center.z * scl);
+    root.updateMatrixWorld(true);
+    root.traverse(o => {
+      if (o.isMesh && o.material) {
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        mats.forEach(m => {
+          m.envMap = envMap; m.envMapIntensity = 1.8;
+          if ('metalness' in m) m.metalness = Math.max(m.metalness, 0.55);
+          if ('roughness' in m) m.roughness = Math.min(m.roughness, 0.25);
+          if ('clearcoat' in m) { m.clearcoat = 1.0; m.clearcoatRoughness = 0.05; }
+          m.transparent = true;
+          m.opacity = 0.33;
+          m.depthWrite = false;
+          m.side = THREE.DoubleSide; // collide on both faces of thin walls
+          m.needsUpdate = true;
+        });
+        if (o.geometry && !o.geometry.boundsTree) {
+          o.geometry.computeBoundingBox();
+          o.geometry.computeBoundingSphere();
+        }
+        glbColliders.push(o);
+      }
+    });
+    scene.add(root);
+    glbOverlay = root;
+  }, undefined, err => { console.warn('connect4.glb failed, using procedural fallback', err); glbOverlay = makeSchwartzShell(); });
+})();
+const CELL = 2.8, BALL_R = 0.26;
 function nodePos(gx, gy, gz) { return new THREE.Vector3((gx - 1.5) * CELL, (gy - 1.5) * CELL * 0.92 + 0.5, (gz - 1.5) * CELL); }
-function makeSaddle(segs, scale, flip) { const verts = [], idx = [], N = segs; for (let i = 0; i <= N; i++)for (let j = 0; j <= N; j++) { const x = (i / N * 2 - 1) * scale, z = (j / N * 2 - 1) * scale; verts.push(x, x * z * 0.5 * (flip ? -1 : 1), z); } for (let i = 0; i < N; i++)for (let j = 0; j < N; j++) { const a = i * (N + 1) + j, b = a + 1, c = a + (N + 1), d = c + 1; idx.push(a, b, c, b, d, c); } const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3)); geo.setIndex(idx); geo.computeVertexNormals(); return geo; }
-const SAD_A = makeSaddle(10, 0.72, false), SAD_B = makeSaddle(10, 0.72, true);
-const SMATS = [new THREE.MeshPhysicalMaterial({ color: 0x0033aa, emissive: 0x000822, metalness: 0.5, roughness: 0.2, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false, envMap }), new THREE.MeshPhysicalMaterial({ color: 0x6600cc, emissive: 0x110033, metalness: 0.5, roughness: 0.2, transparent: true, opacity: 0.25, side: THREE.DoubleSide, depthWrite: false, envMap }), new THREE.MeshPhysicalMaterial({ color: 0x004466, emissive: 0x001122, metalness: 0.5, roughness: 0.2, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false, envMap })];
-const TMAT = new THREE.MeshPhysicalMaterial({ color: 0x112244, emissive: 0x030314, metalness: 0.7, roughness: 0.25, transparent: true, opacity: 0.22, depthWrite: false });
-const TGEO = new THREE.CylinderGeometry(0.038, 0.038, 1, 6, 1);
-function makeTube(a, b) { const dir = new THREE.Vector3().subVectors(b, a); const len = dir.length(); const m = new THREE.Mesh(TGEO, TMAT); m.scale.y = len; m.position.copy(a).addScaledVector(dir, 0.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize()); return m; }
-for (let gx = 0; gx < G; gx++)for (let gy = 0; gy < G; gy++)for (let gz = 0; gz < G; gz++) { const pos = nodePos(gx, gy, gz); const par = (gx + gy + gz) % 2; const saddle = new THREE.Mesh(par ? SAD_B : SAD_A, SMATS[(gx + gy + gz) % 3]); saddle.rotation.y = par ? Math.PI * 0.5 : 0; saddle.position.copy(pos); latticeGroup.add(saddle); if (gx < G - 1) latticeGroup.add(makeTube(pos, nodePos(gx + 1, gy, gz))); if (gy < G - 1) latticeGroup.add(makeTube(pos, nodePos(gx, gy + 1, gz))); if (gz < G - 1) latticeGroup.add(makeTube(pos, nodePos(gx, gy, gz + 1))); }
+// Saddle/tube lattice (z=xy surfaces) removed -- the GLB manifold is now the only visible structure.
+// nodePositions below still drives invisible per-cell sphere collisions for the falling ball.
 const haloGroup = new THREE.Group(); scene.add(haloGroup);
 const HCFGS = [{ r: 9.5, tube: 0.12, color: 0x8800ff, speed: 0.22, tiltX: 0, tiltZ: 0 }, { r: 10.2, tube: 0.08, color: 0x00aaff, speed: -0.15, tiltX: Math.PI / 3, tiltZ: 0.2 }, { r: 9.8, tube: 0.06, color: 0xff00aa, speed: 0.10, tiltX: -Math.PI / 4, tiltZ: 0.4 }];
 const haloMeshes = HCFGS.map(cfg => { const geo = new THREE.TorusGeometry(cfg.r, cfg.tube, 12, 90); const mat = new THREE.MeshBasicMaterial({ color: cfg.color, transparent: true, opacity: 0.55, depthWrite: false }); const m = new THREE.Mesh(geo, mat); m.rotation.x = cfg.tiltX; m.rotation.z = cfg.tiltZ; m.userData = cfg; haloGroup.add(m); return m; });
 const atmoGeo = new THREE.SphereGeometry(12.5, 28, 28);
 const atmoMat = new THREE.ShaderMaterial({ uniforms: { uTime: { value: 0 }, uColor: { value: new THREE.Color(0x4400bb) } }, vertexShader: `varying vec3 vN;void main(){vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`, fragmentShader: `uniform vec3 uColor;uniform float uTime;varying vec3 vN;void main(){float rim=1.0-abs(dot(vN,vec3(0.0,0.0,1.0)));float pulse=0.85+0.15*sin(uTime*1.4);float a=pow(rim,2.8)*0.35*pulse;gl_FragColor=vec4(uColor,a);}`, transparent: true, side: THREE.BackSide, depthWrite: false });
 scene.add(new THREE.Mesh(atmoGeo, atmoMat));
-const BCOLS = { [P1]: { base: 0x1144ee, emissive: 0x0a1a66, glow: 0x2266ff }, [P2]: { base: 0xcc1100, emissive: 0x550800, glow: 0xff2200 } };
-const BGEO = new THREE.SphereGeometry(BALL_R, 28, 28), HGEO = new THREE.SphereGeometry(BALL_R * 2.2, 14, 14), RGEO = new THREE.TorusGeometry(BALL_R * 1.55, 0.025, 8, 32), WGEO = new THREE.SphereGeometry(BALL_R * 2.4, 18, 18);
-function makeBallMat(p, ei = 0.7) { const c = BCOLS[p]; return new THREE.MeshPhysicalMaterial({ color: c.base, emissive: c.emissive, emissiveIntensity: ei, metalness: 1.0, roughness: 0.04, envMap, envMapIntensity: 2.5 }); }
-function makeHaloMat(p, op = 0.18) { return new THREE.MeshBasicMaterial({ color: BCOLS[p].glow, transparent: true, opacity: op, side: THREE.BackSide, depthWrite: false }); }
+// Jewel-tone palette: ruby red, forest green, deep purple, gold. P1/P2 use the first two; the rest are reserved for AI/team variants.
+const BPALETTE = [
+  { base: 0x7a0a18, emissive: 0x1a0205, glow: 0xc81a2a }, // ruby red
+  { base: 0x0d3a1f, emissive: 0x021008, glow: 0x1f8a4a }, // forest green
+  { base: 0x2a0850, emissive: 0x0a0218, glow: 0x6020c8 }, // deep purple
+  { base: 0x6a4a08, emissive: 0x1a1002, glow: 0xd9a82a }  // gold
+];
+const BCOLS = { [P1]: BPALETTE[0], [P2]: BPALETTE[1] };
+const BGEO = new THREE.SphereGeometry(BALL_R, 28, 28), HGEO = new THREE.SphereGeometry(BALL_R * 1.7, 14, 14), RGEO = new THREE.TorusGeometry(BALL_R * 1.55, 0.025, 8, 32), WGEO = new THREE.SphereGeometry(BALL_R * 2.4, 18, 18);
+// Solid jewel-stone ball, polished and reflective. Used both for the falling ball and for settled balls.
+function makeBallMat(p, ei) {
+  const c = BCOLS[p];
+  return new THREE.MeshPhysicalMaterial({
+    color: c.base, emissive: c.emissive, emissiveIntensity: ei != null ? ei : 0.12,
+    metalness: 0.35, roughness: 0.08,
+    clearcoat: 1.0, clearcoatRoughness: 0.015,
+    envMap, envMapIntensity: 2.6, reflectivity: 1.0
+  });
+}
+function makeFallingBallMat(p) { return makeBallMat(p, 0.18); }
+function makeHaloMat(p, op) { return new THREE.MeshBasicMaterial({ color: BCOLS[p].glow, transparent: true, opacity: (op != null ? op : 0.035), side: THREE.BackSide, depthWrite: false }); }
 const placedBalls = [];
-function addPlacedBall(gx, gy, gz, p) { const mesh = new THREE.Mesh(BGEO, makeBallMat(p, 0.6)); const halo = new THREE.Mesh(HGEO, makeHaloMat(p, 0.14)); const ring = new THREE.Mesh(RGEO, new THREE.MeshBasicMaterial({ color: BCOLS[p].glow, transparent: true, opacity: 0.45 })); const pos = nodePos(gx, gy, gz);[mesh, halo, ring].forEach(o => { o.position.copy(pos); scene.add(o); }); ring.rotation.x = Math.PI / 2; placedBalls.push({ mesh, halo, ring, gx, gy, gz, p }); }
+function addPlacedBall(gx, gy, gz, p) { const mesh = new THREE.Mesh(BGEO, makeBallMat(p, 0.6)); const halo = new THREE.Mesh(HGEO, makeHaloMat(p, 0.07)); const ring = new THREE.Mesh(RGEO, new THREE.MeshBasicMaterial({ color: BCOLS[p].glow, transparent: true, opacity: 0.22 })); const pos = nodePos(gx, gy, gz);[mesh, halo, ring].forEach(o => { o.position.copy(pos); scene.add(o); }); ring.rotation.x = Math.PI / 2; placedBalls.push({ mesh, halo, ring, gx, gy, gz, p }); }
 const winGlows = [];
 function showWinGlows(cells) { cells.forEach(([gx, gy, gz]) => { const m = new THREE.Mesh(WGEO, new THREE.MeshBasicMaterial({ color: 0xffee00, transparent: true, opacity: 0.42, side: THREE.BackSide, depthWrite: false })); m.position.copy(nodePos(gx, gy, gz)); scene.add(m); winGlows.push(m); }); }
 function clearWinGlows() { winGlows.forEach(m => scene.remove(m)); winGlows.length = 0; }
-const GRAV = -28, RESTIT = 0.42, DAMP = 0.72, SETTLE_V = 0.18;
-let physBall = null;
-function spawnPhysBall(gx, gz, p) { if (physBall) { scene.remove(physBall.mesh); scene.remove(physBall.halo); physBall = null; } const gy = BM.lowestFree(gx, gz); if (gy < 0) return false; const mesh = new THREE.Mesh(BGEO, makeBallMat(p, 0.9)); const halo = new THREE.Mesh(HGEO, makeHaloMat(p, 0.25)); const startY = nodePos(gx, G + 0.5, gz).y, tx = nodePos(gx, 0, gz).x, tz = nodePos(gx, 0, gz).z; mesh.position.set(tx, startY, tz); halo.position.copy(mesh.position); scene.add(mesh); scene.add(halo); physBall = { mesh, halo, py: startY, vy: -1, tx, tz, gy, gx, gz, p, settled: false }; return true; }
+const GRAV = -62, RESTIT = 0.28, DAMP = 0.72, SETTLE_V = 0.30, BALL_AIR = 0.992;
+// Play volume bounds derived from lattice extents.
+const PLAY_HX = 1.5 * CELL + CELL * 0.6;     // x half-extent (with margin)
+const PLAY_HZ = 1.5 * CELL + CELL * 0.6;     // z half-extent
+const TOP_Y = nodePos(0, G - 1, 0).y + CELL * 1.2;  // ghost-ball hover plane
+const FLOOR_Y = nodePos(0, 0, 0).y - BALL_R;          // hard floor under bottom row
+// Gyroid SDF for collision: g = sin(kx)cos(ky) + sin(ky)cos(kz) + sin(kz)cos(kx).
+// With k = pi / CELL the period is 2*CELL, so cells alternate as gyroid pockets.
+const GY_K = Math.PI / CELL;
+const WALL_THRESHOLD = 0.55;   // |g| > threshold = "inside" the gyroid wall
+function gyroidValue(x, y, z) {
+  const sx = Math.sin(GY_K * x), cx = Math.cos(GY_K * x);
+  const sy = Math.sin(GY_K * y), cy = Math.cos(GY_K * y);
+  const sz = Math.sin(GY_K * z), cz = Math.cos(GY_K * z);
+  return sx * cy + sy * cz + sz * cx;
+}
+function gyroidGrad(x, y, z, out) {
+  const k = GY_K;
+  const sx = Math.sin(k * x), cx = Math.cos(k * x);
+  const sy = Math.sin(k * y), cy = Math.cos(k * y);
+  const sz = Math.sin(k * z), cz = Math.cos(k * z);
+  out.set(k * (cx * cy - sz * sx), k * (-sx * sy + cy * cz), k * (-sy * sz + cz * cx));
+  return out;
+}
+// Lattice-node sphere obstacles (visible saddle tiles): ball bounces off them.
+const NODE_R = CELL * 0.32; // collision radius for each saddle node
+const nodePositions = [];
+for (let gx = 0; gx < G; gx++)
+  for (let gy = 0; gy < G; gy++)
+    for (let gz = 0; gz < G; gz++) nodePositions.push({ gx, gy, gz, p: nodePos(gx, gy, gz) });
+
+let physBall = null;       // active falling ball
+let ghostBall = null;      // ball stuck to the cursor for the current player
+let lastMouseX = window.innerWidth * 0.5, lastMouseY = window.innerHeight * 0.5;
+
+function spawnGhostBall(p) {
+  if (ghostBall) { scene.remove(ghostBall.mesh); scene.remove(ghostBall.halo); ghostBall = null; }
+  const mesh = new THREE.Mesh(BGEO, makeFallingBallMat(p));
+  mesh.renderOrder = 5;
+  const halo = new THREE.Mesh(HGEO, makeHaloMat(p, 0.04));
+  mesh.position.set(0, TOP_Y, 0); halo.position.copy(mesh.position);
+  scene.add(mesh); scene.add(halo);
+  ghostBall = { mesh, halo, p, x: 0, y: TOP_Y, z: 0 };
+  // Snap immediately to the user's last known cursor position so they see it.
+  moveGhostFromClient(lastMouseX, lastMouseY);
+}
+
+const _aimPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -TOP_Y);
+const _aimRay = new THREE.Raycaster();
+const _aimHit = new THREE.Vector3();
+const _aimNDC = new THREE.Vector2();
+function moveGhostFromClient(clientX, clientY) {
+  if (!ghostBall) return;
+  _aimNDC.set((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
+  _aimRay.setFromCamera(_aimNDC, camera);
+  if (_aimRay.ray.intersectPlane(_aimPlane, _aimHit)) {
+    ghostBall.x = Math.max(-PLAY_HX, Math.min(PLAY_HX, _aimHit.x));
+    ghostBall.z = Math.max(-PLAY_HZ, Math.min(PLAY_HZ, _aimHit.z));
+    ghostBall.mesh.position.set(ghostBall.x, TOP_Y, ghostBall.z);
+    ghostBall.halo.position.copy(ghostBall.mesh.position);
+  }
+}
+
+function syncGhostToCursor() {
+  if (!ghostBall || isDropping || isGameOver) return;
+  moveGhostFromClient(lastMouseX, lastMouseY);
+}
+
+function spawnPhysBall(x, z, p) {
+  if (physBall) { scene.remove(physBall.mesh); scene.remove(physBall.halo); physBall = null; }
+  const mesh = new THREE.Mesh(BGEO, makeFallingBallMat(p));
+  mesh.renderOrder = 5;
+  const halo = new THREE.Mesh(HGEO, makeHaloMat(p, 0.03));
+  mesh.position.set(x, TOP_Y, z); halo.position.copy(mesh.position);
+  scene.add(mesh); scene.add(halo);
+  physBall = { mesh, halo, x, y: TOP_Y, z, vx: 0, vy: -1, vz: 0, p, settled: false, settleTimer: 0, spinX: 0, spinY: 0, spinZ: 0 };
+  return true;
+}
+
+function releaseBall() {
+  if (!ghostBall || isDropping || isGameOver) return;
+  const p = ghostBall.p, x = ghostBall.x, z = ghostBall.z;
+  scene.remove(ghostBall.mesh); scene.remove(ghostBall.halo); ghostBall = null;
+  isDropping = true; clearTurnTimer();
+  spawnPhysBall(x, z, p);
+  if (camFollow) { camLookT.set(x, 3, z); camPosT.set(x * 0.5 + 6, TOP_Y + 4, z * 0.5 + 12); }
+}
 const MAX_PARTS = 160, partPos = new Float32Array(MAX_PARTS * 3), partGeo = new THREE.BufferGeometry();
 partGeo.setAttribute('position', new THREE.BufferAttribute(partPos, 3));
 const partMat = new THREE.PointsMaterial({ size: 0.2, color: 0xffffff, transparent: true, opacity: 0.88, depthWrite: false, sizeAttenuation: true });
@@ -76,43 +217,250 @@ scene.add(new THREE.Points(partGeo, partMat));
 const partPool = Array.from({ length: MAX_PARTS }, (_, i) => ({ i, active: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, life: 0, maxLife: 1 }));
 function emitParticles(pos, count, color) { partMat.color.setHex(color); let em = 0; for (const p of partPool) { if (!p.active && em < count) { p.active = true; p.x = pos.x; p.y = pos.y; p.z = pos.z; const spd = 2 + TRNG.f() * 5; const th = TRNG.f() * Math.PI * 2, ph = TRNG.f() * Math.PI; p.vx = Math.sin(ph) * Math.cos(th) * spd; p.vy = Math.sin(ph) * Math.sin(th) * spd + 1.5; p.vz = Math.cos(ph) * spd; p.life = 0; p.maxLife = 0.6 + TRNG.f() * 0.5; em++; } } }
 function updateParticles(dt) { let any = false; for (const p of partPool) { if (!p.active) { partPos[p.i * 3 + 1] = -9999; continue; } p.life += dt; p.vy -= 9 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt; partPos[p.i * 3] = p.x; partPos[p.i * 3 + 1] = p.y; partPos[p.i * 3 + 2] = p.z; if (p.life >= p.maxLife) { p.active = false; partPos[p.i * 3 + 1] = -9999; } else any = true; } if (any) partGeo.attributes.position.needsUpdate = true; }
-const CAM_PRESETS = { A: { pos: new THREE.Vector3(12, 17, 21), target: new THREE.Vector3(0, 3.5, 0) }, B: { pos: new THREE.Vector3(22, 9, 4), target: new THREE.Vector3(0, 2.5, 0) } };
+const CAM_PRESETS = {
+  A: { pos: new THREE.Vector3(8.5, 9, 8.5), target: new THREE.Vector3(0, 2.5, 0) },
+  B: { pos: new THREE.Vector3(22, 9, 4), target: new THREE.Vector3(0, 2.5, 0) }
+};
 let camFollow = true;
-let camRadius = Math.sqrt(12 * 12 + 17 * 17 + 21 * 21), camTheta = Math.atan2(21, 12), camPhi = 0.6;
-let camTarget = new THREE.Vector3(0, 3.5, 0);
-let camPos = new THREE.Vector3(12, 17, 21), camPosT = new THREE.Vector3(12, 17, 21);
-let camLookT = new THREE.Vector3(0, 3.5, 0), camLookC = new THREE.Vector3(0, 3.5, 0);
-let cDrag = false, cLX = 0, cLY = 0;
+const _camAOff = new THREE.Vector3().subVectors(CAM_PRESETS.A.pos, CAM_PRESETS.A.target);
+let camRadius = _camAOff.length();
+let camTheta = Math.atan2(_camAOff.z, _camAOff.x);
+let camPhi = Math.acos(Math.max(-1, Math.min(1, _camAOff.y / Math.max(camRadius, 1e-6))));
+let camTarget = CAM_PRESETS.A.target.clone();
+let camPos = CAM_PRESETS.A.pos.clone(), camPosT = CAM_PRESETS.A.pos.clone();
+let camLookT = CAM_PRESETS.A.target.clone(), camLookC = CAM_PRESETS.A.target.clone();
+let cDrag = false, cLX = 0, cLY = 0, cDownX = 0, cDownY = 0, cMoved = 0, cBtn = 0;
+const ORBIT_SENS = 0.0045;
 const parallax = { x: 0, y: 0, tx: 0, ty: 0 };
 function setCam(p) { document.getElementById('btn-cama').classList.toggle('on', p === 'A'); document.getElementById('btn-camb').classList.toggle('on', p === 'B'); document.getElementById('btn-follow').classList.remove('on'); camFollow = false; camPosT.copy(CAM_PRESETS[p].pos); camLookT.copy(CAM_PRESETS[p].target); }
 function toggleFollow() { camFollow = !camFollow; document.getElementById('btn-follow').classList.toggle('on', camFollow); if (camFollow) { document.getElementById('btn-cama').classList.remove('on'); document.getElementById('btn-camb').classList.remove('on'); } }
 function resetCam() { setCam('A'); }
-canvas.addEventListener('mousedown', e => { if (e.target !== canvas) return; cDrag = true; cLX = e.clientX; cLY = e.clientY; camFollow = false; document.getElementById('btn-follow').classList.remove('on'); });
-window.addEventListener('mouseup', () => cDrag = false);
-window.addEventListener('mousemove', e => { parallax.tx = (e.clientX / window.innerWidth - .5) * 2; parallax.ty = (e.clientY / window.innerHeight - .5) * 2; if (!cDrag) return; camTheta -= (e.clientX - cLX) * 0.007; cLX = e.clientX; camPhi = Math.max(0.08, Math.min(Math.PI - .08, camPhi + (e.clientY - cLY) * 0.007)); cLY = e.clientY; camPosT.set(camTarget.x + camRadius * Math.sin(camPhi) * Math.sin(camTheta), camTarget.y + camRadius * Math.cos(camPhi), camTarget.z + camRadius * Math.sin(camPhi) * Math.cos(camTheta)); });
-canvas.addEventListener('wheel', e => { camRadius = Math.max(10, Math.min(70, camRadius + e.deltaY * 0.04)); e.preventDefault(); }, { passive: false });
-canvas.addEventListener('touchstart', e => { cDrag = true; cLX = e.touches[0].clientX; cLY = e.touches[0].clientY; camFollow = false; }, { passive: true });
-canvas.addEventListener('touchend', () => cDrag = false);
-canvas.addEventListener('touchmove', e => { if (!cDrag) return; camTheta -= (e.touches[0].clientX - cLX) * 0.007; cLX = e.touches[0].clientX; camPhi = Math.max(0.08, Math.min(Math.PI - .08, camPhi + (e.touches[0].clientY - cLY) * 0.007)); cLY = e.touches[0].clientY; camPosT.set(camTarget.x + camRadius * Math.sin(camPhi) * Math.sin(camTheta), camTarget.y + camRadius * Math.cos(camPhi), camTarget.z + camRadius * Math.sin(camPhi) * Math.cos(camTheta)); }, { passive: true });
+// Mouse: right-button or any drag past 6px orbits the camera; left-click without drag drops the ball.
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('mousedown', e => { if (e.target !== canvas) return; cDrag = true; cLX = e.clientX; cLY = e.clientY; cDownX = e.clientX; cDownY = e.clientY; cMoved = 0; cBtn = e.button; if (e.button === 2) { camFollow = false; document.getElementById('btn-follow').classList.remove('on'); } });
+canvas.addEventListener('pointerdown', e => {
+  if (e.target !== canvas) return;
+  lastMouseX = e.clientX; lastMouseY = e.clientY;
+  try { canvas.setPointerCapture(e.pointerId); } catch (_) { }
+});
+window.addEventListener('mouseup', e => { if (cDrag && cBtn === 0 && cMoved < 6) releaseBall(); cDrag = false; });
+canvas.addEventListener('pointerup', e => {
+  if (cDrag && cBtn === 0 && cMoved < 6) releaseBall();
+  cDrag = false;
+  try { canvas.releasePointerCapture(e.pointerId); } catch (_) { }
+});
+window.addEventListener('mousemove', e => {
+  parallax.tx = (e.clientX / window.innerWidth - .5) * 2;
+  parallax.ty = (e.clientY / window.innerHeight - .5) * 2;
+  lastMouseX = e.clientX; lastMouseY = e.clientY;
+  if (!cDrag) return;
+  cMoved += Math.hypot(e.clientX - cLX, e.clientY - cLY);
+  // Only orbit while right button is held OR after the user has unmistakably dragged with left.
+  if (cBtn !== 2 && cMoved < 6) { cLX = e.clientX; cLY = e.clientY; return; }
+  if (cBtn === 0 && cMoved >= 6) { camFollow = false; document.getElementById('btn-follow').classList.remove('on'); }
+  camTheta -= (e.clientX - cLX) * ORBIT_SENS; cLX = e.clientX;
+  camPhi = Math.max(0.08, Math.min(Math.PI - .08, camPhi + (e.clientY - cLY) * ORBIT_SENS)); cLY = e.clientY;
+  camPosT.set(camTarget.x + camRadius * Math.sin(camPhi) * Math.sin(camTheta), camTarget.y + camRadius * Math.cos(camPhi), camTarget.z + camRadius * Math.sin(camPhi) * Math.cos(camTheta));
+});
+window.addEventListener('pointermove', e => {
+  lastMouseX = e.clientX; lastMouseY = e.clientY;
+  syncGhostToCursor();
+});
+// Mouse wheel pans the camera target front/back along the view direction (XZ plane).
+const _wheelFwd = new THREE.Vector3();
+canvas.addEventListener('wheel', e => {
+  _wheelFwd.subVectors(camTarget, camPos); _wheelFwd.y = 0;
+  if (_wheelFwd.lengthSq() < 1e-6) _wheelFwd.set(0, 0, -1); else _wheelFwd.normalize();
+  const step = -e.deltaY * 0.02;
+  camTarget.addScaledVector(_wheelFwd, step);
+  const LIM = CELL * G;
+  camTarget.x = Math.max(-LIM, Math.min(LIM, camTarget.x));
+  camTarget.z = Math.max(-LIM, Math.min(LIM, camTarget.z));
+  camPosT.set(camTarget.x + camRadius * Math.sin(camPhi) * Math.sin(camTheta), camTarget.y + camRadius * Math.cos(camPhi), camTarget.z + camRadius * Math.sin(camPhi) * Math.cos(camTheta));
+  camLookT.copy(camTarget);
+  camFollow = false; document.getElementById('btn-follow').classList.remove('on');
+  e.preventDefault();
+}, { passive: false });
+canvas.addEventListener('touchstart', e => { cDrag = true; cLX = e.touches[0].clientX; cLY = e.touches[0].clientY; cDownX = cLX; cDownY = cLY; cMoved = 0; cBtn = 0; moveGhostFromClient(cLX, cLY); }, { passive: true });
+canvas.addEventListener('touchend', () => { if (cDrag && cMoved < 8) releaseBall(); cDrag = false; });
+canvas.addEventListener('touchmove', e => { if (!cDrag) return; const tx = e.touches[0].clientX, ty = e.touches[0].clientY; cMoved += Math.hypot(tx - cLX, ty - cLY); lastMouseX = tx; lastMouseY = ty; if (cMoved < 8) { cLX = tx; cLY = ty; return; } camFollow = false; camTheta -= (tx - cLX) * ORBIT_SENS; cLX = tx; camPhi = Math.max(0.08, Math.min(Math.PI - .08, camPhi + (ty - cLY) * ORBIT_SENS)); cLY = ty; camPosT.set(camTarget.x + camRadius * Math.sin(camPhi) * Math.sin(camTheta), camTarget.y + camRadius * Math.cos(camPhi), camTarget.z + camRadius * Math.sin(camPhi) * Math.cos(camTheta)); }, { passive: true });
+// Keyboard / gamepad: space, enter, or any gamepad button releases the ball.
+window.addEventListener('keydown', e => { if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); releaseBall(); } });
+let _gpPrev = false;
+function pollGamepad() {
+  const gps = navigator.getGamepads ? navigator.getGamepads() : [];
+  let pressed = false;
+  for (const gp of gps) { if (!gp) continue; for (const b of gp.buttons) if (b && b.pressed) { pressed = true; break; } if (pressed) break; }
+  if (pressed && !_gpPrev) releaseBall();
+  _gpPrev = pressed;
+}
+setInterval(pollGamepad, 60);
 function aiSim(fn) { const snap = BM.snapshot(); const r = fn(); BM.restore(snap); return r; }
 function aiPickColumn() { const cols = BM.openColumns(); if (!cols.length) return null; if (aiDiff === 'easy' || TRNG.f() < 0.18) return TRNG.pick(cols); const opp = currentPlayer === P1 ? P2 : P1; for (const [gx, gz] of TRNG.shuffle(cols)) { if (aiSim(() => { const gy = BM.lowestFree(gx, gz); BM.setCell(gx, gy, gz, currentPlayer); return BM.checkWin(currentPlayer, currentScenario); })) return [gx, gz]; } for (const [gx, gz] of TRNG.shuffle(cols)) { if (aiSim(() => { const gy = BM.lowestFree(gx, gz); BM.setCell(gx, gy, gz, opp); return BM.checkWin(opp, currentScenario); })) return [gx, gz]; } if (aiDiff === 'hard') { const scored = cols.map(([gx, gz]) => { const myT = aiSim(() => { const gy = BM.lowestFree(gx, gz); BM.setCell(gx, gy, gz, currentPlayer); return BM.countThreats(currentPlayer); }); const opT = aiSim(() => { const gy = BM.lowestFree(gx, gz); BM.setCell(gx, gy, gz, opp); return BM.countThreats(opp); }); return { gx, gz, score: myT * 2 + opT * 1.5 + (1.5 - Math.abs(gx - 1.5) * 0.2 - Math.abs(gz - 1.5) * 0.2) + TRNG.f() * 0.4 }; }); scored.sort((a, b) => b.score - a.score); return [scored[0].gx, scored[0].gz]; } const scored = cols.map(([gx, gz]) => ({ gx, gz, score: 4 - Math.abs(gx - 1.5) - Math.abs(gz - 1.5) + TRNG.f() })); scored.sort((a, b) => b.score - a.score); return [scored[0].gx, scored[0].gz]; }
 function updateHUD() { const isP1 = currentPlayer === P1; const n1 = document.getElementById('name-p1').textContent, n2 = document.getElementById('name-p2').textContent; document.getElementById('turn-indicator').textContent = `\u25CF ${isP1 ? n1 : n2}`; document.getElementById('turn-indicator').style.color = isP1 ? 'var(--p1)' : 'var(--p2)'; document.getElementById('panel-p1').classList.toggle('active', isP1); document.getElementById('panel-p2').classList.toggle('active', !isP1); document.getElementById('badge-p1').classList.toggle('pulse', isP1); document.getElementById('badge-p2').classList.toggle('pulse', !isP1); document.getElementById('moves-p1').textContent = TS.count(P1); document.getElementById('moves-p2').textContent = TS.count(P2); document.getElementById('streak-p1').textContent = TS.streak(P1); document.getElementById('streak-p2').textContent = TS.streak(P2); document.getElementById('combo-p1').textContent = BM.countThreats(P1); document.getElementById('combo-p2').textContent = BM.countThreats(P2); }
 function renderLogs() { for (const p of [P1, P2]) document.getElementById(`log-p${p}`).innerHTML = TS.log(p).map(m => `<div class="log-entry">${m}</div>`).join(''); }
 function renderScores() { document.getElementById('score-p1').textContent = TS.score(P1); document.getElementById('score-p2').textContent = TS.score(P2); }
 function showResult(title, sub, tally, color) { document.getElementById('result-title').textContent = title; document.getElementById('result-title').style.color = color; document.getElementById('result-line').textContent = sub; document.getElementById('result-tally').textContent = tally; document.getElementById('result-overlay').classList.add('show'); }
-function buildColUI() { const rows = document.getElementById('cg-rows'); rows.innerHTML = ''; const isP2 = currentPlayer === P2; for (let gz = 0; gz < G; gz++) { const row = document.createElement('div'); row.className = 'cg-row'; for (let gx = 0; gx < G; gx++) { const btn = document.createElement('button'); btn.className = 'drop-btn' + (isP2 ? ' p2b' : ''); btn.innerHTML = `<span class="da">&darr;</span><span class="dl">X${gx + 1}&middot;Z${gz + 1}</span>`; btn.dataset.gx = gx; btn.dataset.gz = gz; btn.disabled = isDropping || isGameOver || BM.columnFull(gx, gz); btn.onclick = () => dropBall(gx, gz); row.appendChild(btn); } rows.appendChild(row); } }
-function refreshColBtns() { const isP2 = currentPlayer === P2; document.querySelectorAll('.drop-btn').forEach(btn => { const gx = +btn.dataset.gx, gz = +btn.dataset.gz; btn.disabled = isDropping || isGameOver || BM.columnFull(gx, gz); btn.className = 'drop-btn' + (isP2 ? ' p2b' : ''); }); }
+// (legacy buildColUI / refreshColBtns now defined as no-ops below)
 function startTurnTimer() { if (!currentScenario.timer) return; clearTurnTimer(); timerLeft = currentScenario.timer; const el = document.getElementById('turn-timer'); el.style.color = 'var(--cyan)'; el.textContent = timerLeft + 's'; turnTimer = setInterval(() => { timerLeft--; el.textContent = timerLeft + 's'; if (timerLeft <= 3) el.style.color = '#ff4444'; if (timerLeft <= 0) { clearTurnTimer(); const avail = BM.openColumns(); if (avail.length) { const [gx, gz] = TRNG.pick(avail); dropBall(gx, gz); } } }, 1000); }
+function buildColUI() { /* legacy column UI replaced by cursor ball */ }
+function refreshColBtns() { /* no-op */ }
 function clearTurnTimer() { if (turnTimer) { clearInterval(turnTimer); turnTimer = null; } document.getElementById('turn-timer').textContent = ''; document.getElementById('turn-timer').style.color = 'var(--cyan)'; }
-function dropBall(gx, gz) { if (isDropping || isGameOver || BM.columnFull(gx, gz)) return; clearTurnTimer(); isDropping = true; refreshColBtns(); spawnPhysBall(gx, gz, currentPlayer); if (camFollow) { const tp = nodePos(gx, G, gz); camPosT.set(tp.x * 0.5 + 6, nodePos(gx, G, gz).y + 6, tp.z * 0.5 + 12); camLookT.set(tp.x, 3, tp.z); } }
-function physStep(dt) { if (!physBall || physBall.settled) return; physBall.vy += GRAV * dt; physBall.py += physBall.vy * dt; const floorY = nodePos(physBall.gx, physBall.gy, physBall.gz).y; if (physBall.py <= floorY + BALL_R) { if (Math.abs(physBall.vy) < SETTLE_V) { physBall.py = floorY; physBall.vy = 0; physBall.settled = true; onBallSettled(); return; } physBall.py = floorY + BALL_R; physBall.vy = -physBall.vy * RESTIT * DAMP; } boardGlow.intensity = Math.max(0, 2 - physBall.py * 0.2); physBall.mesh.position.set(physBall.tx, physBall.py, physBall.tz); physBall.halo.position.set(physBall.tx, physBall.py, physBall.tz); if (camFollow) { camLookT.y += (physBall.py - camLookT.y) * 0.1; camPosT.y += (physBall.py + 7 - camPosT.y) * 0.06; } }
+// Legacy entry used by AI and turn-timer fallback. Drops straight from the top of (gx,gz).
+function dropBall(gx, gz) {
+  if (isDropping || isGameOver) return;
+  clearTurnTimer(); isDropping = true;
+  if (ghostBall) { scene.remove(ghostBall.mesh); scene.remove(ghostBall.halo); ghostBall = null; }
+  const tp = nodePos(gx, 0, gz);
+  const jitter = (TRNG.f() - 0.5) * CELL * 0.25;
+  spawnPhysBall(tp.x + jitter, tp.z + jitter, currentPlayer);
+  if (camFollow) { camLookT.set(tp.x, 3, tp.z); camPosT.set(tp.x * 0.5 + 6, TOP_Y + 4, tp.z * 0.5 + 12); }
+}
+function physStep(dt) {
+  if (!physBall || physBall.settled) return;
+  const STEPS = 7, hdt = dt / STEPS;
+  for (let s = 0; s < STEPS; s++) { if (!physBall || physBall.settled) break; physSubstep(hdt); }
+  if (!physBall) return;
+  physBall.mesh.position.set(physBall.x, physBall.y, physBall.z);
+  physBall.mesh.rotation.x += physBall.spinX * dt;
+  physBall.mesh.rotation.y += physBall.spinY * dt;
+  physBall.mesh.rotation.z += physBall.spinZ * dt;
+  physBall.spinX *= 0.985; physBall.spinY *= 0.985; physBall.spinZ *= 0.985;
+  physBall.halo.position.copy(physBall.mesh.position);
+  boardGlow.intensity = Math.max(0, 2 - physBall.y * 0.2);
+  if (camFollow) {
+    camLookT.x += (physBall.x - camLookT.x) * 0.08;
+    camLookT.y += (physBall.y - camLookT.y) * 0.08;
+    camLookT.z += (physBall.z - camLookT.z) * 0.08;
+    camPosT.y += (physBall.y + 8 - camPosT.y) * 0.05;
+  }
+}
+function collideBallVsGlb(px, py, pz) {
+  if (!glbColliders.length || !physBall) return false;
+  glbDir.set(physBall.x - px, physBall.y - py, physBall.z - pz);
+  const travel = glbDir.length();
+  if (travel < 1e-6) return false;
+  glbDir.multiplyScalar(1 / travel);
+  glbRay.set(new THREE.Vector3(px, py, pz), glbDir);
+  glbRay.near = 0;
+  glbRay.far = travel + BALL_R * 1.25;
+  const hits = glbRay.intersectObjects(glbColliders, false);
+  if (!hits.length) return false;
+  const h = hits[0];
+  if (!h.face) return false;
+  glbN.copy(h.face.normal);
+  glbNMat.getNormalMatrix(h.object.matrixWorld);
+  glbN.applyMatrix3(glbNMat).normalize();
+  // Ensure normal opposes incoming motion.
+  const vdotn = physBall.vx * glbN.x + physBall.vy * glbN.y + physBall.vz * glbN.z;
+  if (vdotn > 0) glbN.multiplyScalar(-1);
+  const push = BALL_R + 0.01;
+  physBall.x = h.point.x + glbN.x * push;
+  physBall.y = h.point.y + glbN.y * push;
+  physBall.z = h.point.z + glbN.z * push;
+  const vn = physBall.vx * glbN.x + physBall.vy * glbN.y + physBall.vz * glbN.z;
+  if (vn < 0) {
+    // Glassy bounce: slight rebound with strong tangential retention so ball follows passages.
+    physBall.vx -= (1 + RESTIT) * vn * glbN.x;
+    physBall.vy -= (1 + RESTIT) * vn * glbN.y;
+    physBall.vz -= (1 + RESTIT) * vn * glbN.z;
+    const vAfterN = physBall.vx * glbN.x + physBall.vy * glbN.y + physBall.vz * glbN.z;
+    const vtnx = physBall.vx - vAfterN * glbN.x;
+    const vtny = physBall.vy - vAfterN * glbN.y;
+    const vtnz = physBall.vz - vAfterN * glbN.z;
+    physBall.vx = glbN.x * vAfterN + vtnx * 0.94;
+    physBall.vy = glbN.y * vAfterN + vtny * 0.94;
+    physBall.vz = glbN.z * vAfterN + vtnz * 0.94;
+    const tmag = Math.sqrt(vtnx * vtnx + vtny * vtny + vtnz * vtnz);
+    physBall.spinX += (glbN.z * tmag - glbN.y * tmag * 0.3) * 0.08;
+    physBall.spinY += (glbN.x * tmag) * 0.06;
+    physBall.spinZ += (-glbN.x * tmag + glbN.y * tmag * 0.3) * 0.08;
+  }
+  return true;
+}
+function physSubstep(dt) {
+  if (!physBall || physBall.settled) return;
+  const px = physBall.x, py = physBall.y, pz = physBall.z;
+  physBall.vy += GRAV * dt;
+  physBall.x += physBall.vx * dt;
+  physBall.y += physBall.vy * dt;
+  physBall.z += physBall.vz * dt;
+  physBall.vx *= BALL_AIR; physBall.vz *= BALL_AIR;
+  collideBallVsGlb(px, py, pz);
+  // Collide against each visible lattice node treated as a sphere obstacle.
+  for (let i = 0; i < nodePositions.length; i++) {
+    const n = nodePositions[i].p;
+    const dx = physBall.x - n.x, dy = physBall.y - n.y, dz = physBall.z - n.z;
+    const d2 = dx * dx + dy * dy + dz * dz;
+    const minD = NODE_R + BALL_R;
+    if (d2 < minD * minD && d2 > 1e-8) {
+      const d = Math.sqrt(d2), nx = dx / d, ny = dy / d, nz = dz / d;
+      const overlap = minD - d;
+      physBall.x += nx * overlap; physBall.y += ny * overlap; physBall.z += nz * overlap;
+      const vn = physBall.vx * nx + physBall.vy * ny + physBall.vz * nz;
+      if (vn < 0) {
+        physBall.vx -= (1 + RESTIT) * vn * nx;
+        physBall.vy -= (1 + RESTIT) * vn * ny;
+        physBall.vz -= (1 + RESTIT) * vn * nz;
+        physBall.vx *= 0.93; physBall.vz *= 0.93;
+      }
+    }
+  }
+  // Collide against already-placed balls so cells are sealed.
+  for (let i = 0; i < placedBalls.length; i++) {
+    const b = placedBalls[i].mesh.position;
+    const dx = physBall.x - b.x, dy = physBall.y - b.y, dz = physBall.z - b.z;
+    const d2 = dx * dx + dy * dy + dz * dz;
+    const minD = BALL_R * 2;
+    if (d2 < minD * minD && d2 > 1e-8) {
+      const d = Math.sqrt(d2), nx = dx / d, ny = dy / d, nz = dz / d;
+      const overlap = minD - d;
+      physBall.x += nx * overlap; physBall.y += ny * overlap; physBall.z += nz * overlap;
+      const vn = physBall.vx * nx + physBall.vy * ny + physBall.vz * nz;
+      if (vn < 0) {
+        physBall.vx -= (1 + RESTIT) * vn * nx;
+        physBall.vy -= (1 + RESTIT) * vn * ny;
+        physBall.vz -= (1 + RESTIT) * vn * nz;
+      }
+    }
+  }
+  if (physBall.x < -PLAY_HX) { physBall.x = -PLAY_HX; physBall.vx = -physBall.vx * RESTIT; }
+  if (physBall.x > PLAY_HX) { physBall.x = PLAY_HX; physBall.vx = -physBall.vx * RESTIT; }
+  if (physBall.z < -PLAY_HZ) { physBall.z = -PLAY_HZ; physBall.vz = -physBall.vz * RESTIT; }
+  if (physBall.z > PLAY_HZ) { physBall.z = PLAY_HZ; physBall.vz = -physBall.vz * RESTIT; }
+  if (physBall.y < FLOOR_Y) {
+    physBall.y = FLOOR_Y;
+    physBall.vy = -physBall.vy * RESTIT;
+    physBall.vx *= 0.85; physBall.vz *= 0.85;
+  }
+  const speed2 = physBall.vx * physBall.vx + physBall.vy * physBall.vy + physBall.vz * physBall.vz;
+  if (speed2 < SETTLE_V * SETTLE_V) {
+    physBall.settleTimer += dt;
+    if (physBall.settleTimer > 0.4) { physBall.settled = true; onBallSettled(); }
+  } else { physBall.settleTimer = 0; }
+}
+// Snap a settled world position to the nearest unoccupied lattice cell.
+function nearestFreeCell(x, y, z) {
+  let best = null, bestD = Infinity;
+  for (let i = 0; i < nodePositions.length; i++) {
+    const { gx, gy, gz, p } = nodePositions[i];
+    if (BM.getCell(gx, gy, gz)) continue;
+    const dx = x - p.x, dy = y - p.y, dz = z - p.z;
+    const d = dx * dx + dy * dy + dz * dz;
+    if (d < bestD) { bestD = d; best = [gx, gy, gz]; }
+  }
+  return best;
+}
 function describeWin(cells, sc) { return sc.special === 'cube' ? 'PERFECT CUBE COMPLETED!' : (BM.dirLabel(cells) || '').toUpperCase(); }
 function nameOf(p) { return document.getElementById(`name-p${p}`).textContent; }
 function tallyStr() { return `P1: ${TS.score(P1)}  |  P2: ${TS.score(P2)}`; }
 function onBallSettled() {
-  const { gx, gy, gz, p } = physBall;
+  const p = physBall.p;
+  const cell = nearestFreeCell(physBall.x, physBall.y, physBall.z);
   scene.remove(physBall.mesh); scene.remove(physBall.halo); physBall = null;
   boardGlow.intensity = 0;
+  if (!cell) { isDropping = false; if (!isGameOver) maybeSpawnTurnBall(); return; }
+  const [gx, gy, gz] = cell;
   BM.setCell(gx, gy, gz, p);
   addPlacedBall(gx, gy, gz, p);
   emitParticles(nodePos(gx, gy, gz), 28, BCOLS[p].glow);
@@ -149,11 +497,29 @@ function onBallSettled() {
     isDropping = false; refreshColBtns(); updateHUD(); return;
   }
   currentPlayer = currentPlayer === P1 ? P2 : P1;
-  updateHUD(); buildColUI();
+  isDropping = false;
+  updateHUD();
   if (camFollow) setTimeout(() => { camPosT.copy(CAM_PRESETS.A.pos); camLookT.copy(CAM_PRESETS.A.target); }, 600);
+  maybeSpawnTurnBall();
+}
+// Hand control to the next actor: AI auto-drops, a human gets a cursor ball.
+function maybeSpawnTurnBall() {
+  if (isGameOver) return;
   if (vsMode === 'ai' && currentPlayer === P2) {
-    setTimeout(() => { if (!isGameOver && !isDropping) { const col = aiPickColumn(); if (col) dropBall(col[0], col[1]); } }, 500 + TRNG.f() * 400);
+    setTimeout(() => {
+      if (isGameOver || isDropping) return;
+      let col = null;
+      try { col = aiPickColumn(); } catch (err) { console.warn('aiPickColumn threw', err); }
+      if (!col) {
+        // Fallback: pick any free cell directly from the lattice.
+        const free = nodePositions.filter(n => !BM.getCell(n.gx, n.gy, n.gz));
+        if (free.length) col = [free[(Math.random() * free.length) | 0].gx, free[(Math.random() * free.length) | 0].gz];
+      }
+      if (col) dropBall(col[0], col[1]);
+      else { console.warn('AI: no moves available'); }
+    }, 500 + TRNG.f() * 400);
   } else {
+    spawnGhostBall(currentPlayer);
     startTurnTimer();
   }
 }
@@ -163,9 +529,9 @@ function setDiff(d) { aiDiff = d; document.querySelectorAll('.diff-btn').forEach
 function showScenarioSelect() { document.getElementById('result-overlay').classList.remove('show'); document.getElementById('scenario-select').classList.add('show'); }
 function startGame() { currentScenario = selectedScenario; document.getElementById('scenario-select').classList.remove('show'); document.getElementById('scenario-tag').textContent = currentScenario.name; document.querySelectorAll('.panel-mode').forEach(e => e.textContent = currentScenario.name); resetGame(true); }
 function rematch() { document.getElementById('result-overlay').classList.remove('show'); resetGame(false); }
-function resetGame(resetScores) { BM.reset(); TS.reset({ resetScores }); currentPlayer = P1; isGameOver = false; isDropping = false; clearTurnTimer(); placedBalls.forEach(b => { scene.remove(b.mesh); scene.remove(b.halo); scene.remove(b.ring); }); placedBalls.length = 0; clearWinGlows(); if (physBall) { scene.remove(physBall.mesh); scene.remove(physBall.halo); physBall = null; } boardGlow.intensity = 0; renderScores(); renderLogs(); updateHUD(); buildColUI(); if (camFollow) { camPosT.copy(CAM_PRESETS.A.pos); camLookT.copy(CAM_PRESETS.A.target); } boardGlow.color.setHex(0x4422ff); boardGlow.intensity = 5; setTimeout(() => { boardGlow.intensity = 0; }, 500); if (vsMode === 'ai') document.getElementById('name-p2').textContent = 'AI OPPONENT'; startTurnTimer(); }
+function resetGame(resetScores) { BM.reset(); TS.reset({ resetScores }); currentPlayer = P1; isGameOver = false; isDropping = false; clearTurnTimer(); placedBalls.forEach(b => { scene.remove(b.mesh); scene.remove(b.halo); scene.remove(b.ring); }); placedBalls.length = 0; clearWinGlows(); if (physBall) { scene.remove(physBall.mesh); scene.remove(physBall.halo); physBall = null; } if (ghostBall) { scene.remove(ghostBall.mesh); scene.remove(ghostBall.halo); ghostBall = null; } boardGlow.intensity = 0; renderScores(); renderLogs(); updateHUD(); if (camFollow) { camPosT.copy(CAM_PRESETS.A.pos); camLookT.copy(CAM_PRESETS.A.target); } boardGlow.color.setHex(0x4422ff); boardGlow.intensity = 5; setTimeout(() => { boardGlow.intensity = 0; }, 500); if (vsMode === 'ai') document.getElementById('name-p2').textContent = 'AI OPPONENT'; maybeSpawnTurnBall(); }
 let lastT = 0;
-function animate(t) { requestAnimationFrame(animate); const dt = Math.min((t - lastT) / 1000, 0.05); lastT = t; const uTime = t * 0.001; parallax.x += (parallax.tx - parallax.x) * 0.04; parallax.y += (parallax.ty - parallax.y) * 0.04; starLayers.forEach(layer => { layer.material.uniforms.uTime.value = uTime; layer.position.x = parallax.x * layer.userData.parallax; layer.position.y = -parallax.y * layer.userData.parallax * 0.5; }); haloMeshes.forEach((m, i) => { m.rotation.y += m.userData.speed * dt; m.material.opacity = 0.35 + 0.25 * Math.sin(uTime * 1.1 + i * 2.1); }); atmoMat.uniforms.uTime.value = uTime; if (saturn) saturn.rotation.y += 0.003 * dt; if (jupiter) jupiter.rotation.y += 0.008 * dt; if (glbOverlay && !isDropping) glbOverlay.rotation.y = Math.sin(uTime * 0.06) * 0.025; if (!isDropping) latticeGroup.rotation.y = Math.sin(uTime * 0.07) * 0.03; placedBalls.forEach((b, i) => { b.halo.material.opacity = 0.12 + 0.06 * Math.sin(uTime * 1.8 + i * 1.3); b.ring.material.opacity = 0.3 + 0.2 * Math.sin(uTime * 2.2 + i * 0.9); }); physStep(dt); updateParticles(dt); camPos.lerp(camPosT, 0.06); camLookC.lerp(camLookT, 0.07); camera.position.copy(camPos); camera.lookAt(camLookC); renderer.render(scene, camera); }
+function animate(t) { requestAnimationFrame(animate); const dt = Math.min((t - lastT) / 1000, 0.05); lastT = t; const uTime = t * 0.001; parallax.x += (parallax.tx - parallax.x) * 0.04; parallax.y += (parallax.ty - parallax.y) * 0.04; starLayers.forEach(layer => { layer.material.uniforms.uTime.value = uTime; layer.position.x = parallax.x * layer.userData.parallax; layer.position.y = -parallax.y * layer.userData.parallax * 0.5; }); haloMeshes.forEach((m, i) => { m.rotation.y += m.userData.speed * dt; m.material.opacity = 0.35 + 0.25 * Math.sin(uTime * 1.1 + i * 2.1); }); atmoMat.uniforms.uTime.value = uTime; if (saturn) saturn.rotation.y += 0.003 * dt; if (jupiter) jupiter.rotation.y += 0.008 * dt; if (glbOverlay && !isDropping) glbOverlay.rotation.y = Math.sin(uTime * 0.06) * 0.025; syncGhostToCursor(); placedBalls.forEach((b, i) => { b.halo.material.opacity = 0.05 + 0.02 * Math.sin(uTime * 1.8 + i * 1.3); b.ring.material.opacity = 0.16 + 0.08 * Math.sin(uTime * 2.2 + i * 0.9); }); physStep(dt); updateParticles(dt); camPos.lerp(camPosT, 0.06); camLookC.lerp(camLookT, 0.07); camera.position.copy(camPos); camera.lookAt(camLookC); renderer.render(scene, camera); }
 window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
 function setPreloadProgress(p) { document.getElementById('pre-bar').style.width = p + '%'; }
 function finishPreload() { const pre = document.getElementById('preloader'); pre.style.opacity = '0'; setTimeout(() => pre.style.display = 'none', 850); }

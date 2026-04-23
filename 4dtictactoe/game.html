@@ -50,10 +50,9 @@
     <div id="turn-indicator" style="color:var(--p1)">&#9899; PLAYER 1</div>
     <div id="turn-timer"></div>
   </div>
-  <div id="col-grid">
-    <div id="cg-label">DROP COLUMN</div>
-    <div id="cg-rows"></div>
-  </div>
+  <div id="aim-hint"
+    style="position:fixed;left:50%;bottom:14px;transform:translateX(-50%);font:10px 'Press Start 2P',monospace;color:#88ddff;letter-spacing:0.06em;text-shadow:0 0 8px rgba(0,180,255,0.55);pointer-events:none;z-index:5;opacity:0.9">
+    MOVE MOUSE &middot; LEFT-CLICK TO DROP &middot; RIGHT-DRAG TO ORBIT</div>
   <div id="cam-controls">
     <button class="cam-btn on" id="btn-cama" onclick="setCam('A')">CAM A</button>
     <button class="cam-btn" id="btn-camb" onclick="setCam('B')">CAM B</button>
@@ -94,6 +93,7 @@
   </div>
   <script src="/js/manifold_bridge.js"></script>
   <script src="/lib/three/three.min.js"></script>
+  <script src="/lib/three/GLTFLoader.js"></script>
   <script src="manifold.js"></script>
   <script src="game.js"></script>
 </body>

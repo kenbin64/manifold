@@ -109,7 +109,7 @@
     try {
       const d = await KG_SESSION.create(_gameId, 'private', 0);
       if (d.sessionId) {
-        window.location.href = `${_lobbyPath}?session=${encodeURIComponent(d.sessionId)}`;
+        window.location.href = _appendQuery(_lobbyPath, 'session', d.sessionId);
       } else if (d.inviteUrl) {
         window.location.href = d.inviteUrl;
       } else {
@@ -130,7 +130,7 @@
     try {
       const d = await KG_SESSION.create(_gameId, 'public', 0);
       if (d.sessionId) {
-        window.location.href = `${_lobbyPath}?session=${encodeURIComponent(d.sessionId)}`;
+        window.location.href = _appendQuery(_lobbyPath, 'session', d.sessionId);
       } else if (d.inviteUrl) {
         window.location.href = d.inviteUrl;
       } else {
@@ -163,6 +163,11 @@
     if (!btn) return;
     btn.disabled = false;
     btn.textContent = btn._origText || fallback || 'RETRY';
+  }
+
+  function _appendQuery(url, key, value) {
+    const sep = url.indexOf('?') === -1 ? '?' : '&';
+    return `${url}${sep}${key}=${encodeURIComponent(value)}`;
   }
 
   function _showError(msg) {

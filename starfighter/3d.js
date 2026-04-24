@@ -43,6 +43,12 @@ const SF3D = (function () {
     const _activeIds = new Set();  // reused every frame — no allocation
     let _frameTime = 0;  // cached performance.now() per frame
 
+    function _createGLTFLoader() {
+        if (THREE.GLTFLoader) return new THREE.GLTFLoader();
+        console.warn('[SF3D] THREE.GLTFLoader unavailable; continuing in manifold-only mode');
+        return null;
+    }
+
     // ══════════════════════════════════════════════════════════════════
     // § MANIFOLD GEOMETRY CACHE
     // ══════════════════════════════════════════════════════════════════
@@ -716,7 +722,11 @@ const SF3D = (function () {
 
         // Celestial bodies (earth, moon) have no manifold seeds — load GLBs in background
         // Do NOT count toward loading progress so the loading screen doesn't hang
-        const loader = new THREE.GLTFLoader();
+        const loader = _createGLTFLoader();
+        if (!loader) {
+            console.warn('[ManifoldGeometry] Skipping legacy GLB fallback because GLTFLoader is unavailable');
+            return;
+        }
         const celestialTypes = ['earth', 'moon'];
         for (const key of celestialTypes) {
             if (GLB_LOD[key]) _loadGLBType(loader, key, GLB_LOD[key], false);
@@ -725,7 +735,7 @@ const SF3D = (function () {
 
     // LEGACY GLB PRELOAD (kept for backward compatibility)
     function _preloadGLBModels_LEGACY() {
-        const loader = new THREE.GLTFLoader();
+        const loader = _createGLTFLoader();
 
         // Only count preloaded models for loading screen (+ cockpit)
         _totalModelsToLoad = 1; // cockpit
@@ -750,6 +760,14 @@ const SF3D = (function () {
         glbModels[key] = lod;
         let loaded = 0;
         const levelResults = new Array(levels.length);
+
+        if (!loader) {
+            for (let i = 0; i < levels.length; i++) {
+                if (countProgress) _updateLoadingProgress(key);
+            }
+            if (!countProgress) _lazyState[key] = 'loaded';
+            return;
+        }
 
         levels.forEach(({ path, distance }, idx) => {
             loader.load(path,
@@ -1353,63 +1371,69 @@ const SF3D = (function () {
         createManifoldCockpit();
 
         // Load GLB cockpit model
-        const gltfLoader = new THREE.GLTFLoader();
-        gltfLoader.load('assets/models/optimized/firstPersonStarFighterCockpit_lod0.glb',
-            function (gltf) {
-                cockpitModel = gltf.scene;
+        const gltfLoader = _createGLTFLoader();
+        if (gltfLoader) {
+            gltfLoader.load('assets/models/optimized/firstPersonStarFighterCockpit_lod0.glb',
+                function (gltf) {
+                    cockpitModel = gltf.scene;
 
-                // Model bounds are roughly -0.8 to 0.8 (unit cube).
-                // Scale and position so the pilot view looks out through the cockpit.
-                // We want the cockpit to fill the lower portion of the view.
-                cockpitModel.scale.setScalar(1.8);
-                cockpitModel.position.set(0, -0.6, -0.8);
+                    // Model bounds are roughly -0.8 to 0.8 (unit cube).
+                    // Scale and position so the pilot view looks out through the cockpit.
+                    // We want the cockpit to fill the lower portion of the view.
+                    cockpitModel.scale.setScalar(1.8);
+                    cockpitModel.position.set(0, -0.6, -0.8);
 
-                // Ensure cockpit renders on top of everything (depth-free overlay)
-                cockpitModel.traverse(child => {
-                    if (child.isMesh) {
-                        child.renderOrder = 100;
-                        child.frustumCulled = false;
-                        child.material.side = THREE.DoubleSide;
-                        // Keep cockpit as a camera-overlay layer so nearby world geometry
-                        // (baseship hull / launch tunnel) cannot punch it out after launch.
-                        child.material.depthTest = false;
-                        child.material.depthWrite = false;
-                        child.material.toneMapped = true;
-                        // Keep the PBR look
-                        if (child.material.map) child.material.map.encoding = THREE.sRGBEncoding;
+                    // Ensure cockpit renders on top of everything (depth-free overlay)
+                    cockpitModel.traverse(child => {
+                        if (child.isMesh) {
+                            child.renderOrder = 100;
+                            child.frustumCulled = false;
+                            child.material.side = THREE.DoubleSide;
+                            // Keep cockpit as a camera-overlay layer so nearby world geometry
+                            // (baseship hull / launch tunnel) cannot punch it out after launch.
+                            child.material.depthTest = false;
+                            child.material.depthWrite = false;
+                            child.material.toneMapped = true;
+                            // Keep the PBR look
+                            if (child.material.map) child.material.map.encoding = THREE.sRGBEncoding;
+                        }
+                    });
+
+                    // ── Separate arm geometry for procedural animation ──
+                    cockpitModel.traverse(child => {
+                        if (child.isMesh && child.geometry) {
+                            _extractArms(child);
+                        }
+                    });
+
+                    cockpitGroup.add(cockpitModel);
+                    cockpitModel.visible = cockpitVisible;
+                    cockpitLoaded = true;
+                    cockpitLoadFailed = false;
+                    if (manifoldCockpitGroup) manifoldCockpitGroup.visible = cockpitVisible && MANIFOLD_COCKPIT_DEBUG;
+                    _updateLoadingProgress('cockpit');
+
+                    console.log('Cockpit GLB loaded successfully');
+                },
+                function (progress) {
+                    if (progress.total > 0) {
+                        const pct = Math.floor(progress.loaded / progress.total * 100);
+                        const text = document.getElementById('loading-text');
+                        if (text) text.textContent = 'LOADING COCKPIT... ' + pct + '%';
                     }
-                });
-
-                // ── Separate arm geometry for procedural animation ──
-                cockpitModel.traverse(child => {
-                    if (child.isMesh && child.geometry) {
-                        _extractArms(child);
-                    }
-                });
-
-                cockpitGroup.add(cockpitModel);
-                cockpitModel.visible = cockpitVisible;
-                cockpitLoaded = true;
-                cockpitLoadFailed = false;
-                if (manifoldCockpitGroup) manifoldCockpitGroup.visible = cockpitVisible && MANIFOLD_COCKPIT_DEBUG;
-                _updateLoadingProgress('cockpit');
-
-                console.log('Cockpit GLB loaded successfully');
-            },
-            function (progress) {
-                if (progress.total > 0) {
-                    const pct = Math.floor(progress.loaded / progress.total * 100);
-                    const text = document.getElementById('loading-text');
-                    if (text) text.textContent = 'LOADING COCKPIT... ' + pct + '%';
+                },
+                function (error) {
+                    console.error('Failed to load cockpit GLB:', error);
+                    cockpitLoadFailed = true;
+                    if (manifoldCockpitGroup) manifoldCockpitGroup.visible = cockpitVisible;
+                    _updateLoadingProgress('cockpit');
                 }
-            },
-            function (error) {
-                console.error('Failed to load cockpit GLB:', error);
-                cockpitLoadFailed = true;
-                if (manifoldCockpitGroup) manifoldCockpitGroup.visible = cockpitVisible;
-                _updateLoadingProgress('cockpit');
-            }
-        );
+            );
+        } else {
+            cockpitLoaded = true;
+            cockpitLoadFailed = true;
+            if (manifoldCockpitGroup) manifoldCockpitGroup.visible = cockpitVisible;
+        }
 
         // ── Telemetry canvas (still drawn to offscreen canvas for HUD) ──
         telemetryCanvas = document.createElement('canvas');
@@ -1428,6 +1452,8 @@ const SF3D = (function () {
 
         camera.add(cockpitGroup);
         scene.add(camera);
+
+        if (!gltfLoader) _updateLoadingProgress('cockpit');
     }
 
     function createManifoldCockpit() {

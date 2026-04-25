@@ -147,7 +147,7 @@
   function openInviteJoin(code) {
     if (!code || !code.trim()) { _showError('Enter an invite code'); return; }
     const game = _gameId || '';
-    window.location.href = `/invite/?code=${encodeURIComponent(code.trim().toUpperCase())}&game=${encodeURIComponent(game)}`;
+    window.location.href = `/play/?game=${encodeURIComponent(game)}&code=${encodeURIComponent(code.trim().toUpperCase())}`;
   }
 
   // -- helpers ---------------------------------------------------------------

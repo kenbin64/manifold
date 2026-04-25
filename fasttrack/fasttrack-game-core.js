@@ -334,14 +334,20 @@ function _manifoldStateUpdate() {
 // ═══════════════════════════════════════════════════════════════════════════
 // INITIALIZATION
 // ═══════════════════════════════════════════════════════════════════════════
-// config: { humanName, humanAvatar, aiDifficulty }
+// config: { humanName, humanAvatar, aiDifficulty, playerObjects?, launchObject? }
 function initGame(playerCount = 2, config = {}) {
   const humanName = (config.humanName || '').trim() || 'You';
   const humanAvatar = config.humanAvatar || '🎮';
   const aiDifficulty = config.aiDifficulty || 'normal';
+  const injectedPlayers = Array.isArray(config.playerObjects)
+    ? config.playerObjects.filter(Boolean)
+    : null;
+  const effectivePlayerCount = injectedPlayers && injectedPlayers.length > 0
+    ? Math.max(2, Math.min(4, injectedPlayers.length))
+    : Math.max(2, Math.min(4, Number(playerCount) || 2));
   _usedPegNames.clear();
   _usedBotNames.clear();
-  state.players.set('count', playerCount);
+  state.players.set('count', effectivePlayerCount);
   state.players.set('current', 0);
   if (window.CameraDirector) window.CameraDirector.setActivePlayer(0);
 
@@ -388,37 +394,49 @@ function initGame(playerCount = 2, config = {}) {
   state.meta.set('winner', null);
   state.meta.set('seed', Math.floor(Math.random() * 0xFFFFFFFF));
 
-  // Players — each gets 5 pegs: 4 in holding, 1 on home hole
+  // Players — built via the dimensional `x`-seed factories (fasttrack/x/).
+  // Each player is an `x`; its pegs are `x`s composed by reference.
+  // See PARADIGM.md §1 — "Every discrete part is an `x`."
+  const FX = (typeof window !== 'undefined') ? window.FastTrackX : null;
+  if (!FX || !FX.player || !FX.peg) {
+    throw new Error('FastTrackX seed modules not loaded (expected x/peg.x.js, x/player.x.js)');
+  }
   const players = [];
-  for (let i = 0; i < playerCount; i++) {
-    const bp = getBalancedBoardPosition(i, playerCount);
-    const player = {
+  for (let i = 0; i < effectivePlayerCount; i++) {
+    const injected = injectedPlayers ? injectedPlayers[i] : null;
+    const isBot = injected ? !!injected.isBot : (i > 0);
+    const fallbackName = i === 0 ? humanName : `🤖 Bot "${assignBotName()}"`;
+    const name = (injected && injected.name) ? String(injected.name) : fallbackName;
+    const avatarSpec = injected ? (injected.avatarObject || injected.avatar || null) : null;
+    const avatarGlyph = (avatarSpec && typeof avatarSpec === 'object' && avatarSpec.glyph)
+      ? avatarSpec.glyph
+      : (typeof avatarSpec === 'string' ? avatarSpec : (isBot ? '🤖' : humanAvatar));
+    const avatarObject = (FX.avatar && typeof FX.avatar.create === 'function')
+      ? FX.avatar.create({
+        id: (avatarSpec && avatarSpec.id) || (injected && (injected.userId || injected.user_id)) || null,
+        glyph: avatarGlyph,
+        image: (avatarSpec && avatarSpec.image) || null,
+        sprite: (avatarSpec && avatarSpec.sprite) || null,
+        metadata: (avatarSpec && avatarSpec.metadata) || {},
+      })
+      : { glyph: avatarGlyph, image: null, sprite: null, metadata: {} };
+    const bp = getBalancedBoardPosition(i, effectivePlayerCount);
+    const player = FX.player.create({
       index: i,
-      name: i === 0 ? humanName : `🤖 Bot "${assignBotName()}"`,
-      avatar: i === 0 ? humanAvatar : '🤖',
-      aiDifficulty: i > 0 ? aiDifficulty : null,
+      isBot: isBot,
+      userId: injected ? (injected.userId || injected.user_id || null) : null,
+      isHost: !!(injected && (injected.isHost || injected.is_host)),
+      name: name,
+      avatar: avatarGlyph,
+      avatarObject: avatarObject,
+      aiDifficulty: aiDifficulty,
       color: PLAYER_COLORS[bp],
       boardPosition: bp,
-      isBot: i > 0,
-      pegs: Array.from({ length: PEGS_PER_PLAYER }, (_, p) => ({
-        id: `p${i}-peg${p}`,
-        holeId: 'holding',
-        holeType: 'holding',
-        nickname: assignPegNickname(),
-        onFasttrack: false,
-        eligibleForSafeZone: false,
-        lockedToSafeZone: false,
-        completedCircuit: false,
-        fasttrackEntryHole: null,
-        mustExitFasttrack: false,
-        // NPC personality & emotional state
-        personality: assignPegPersonality(),
-        mood: 'EAGER',
-        captureCount: 0,
-        timesCaptured: 0,
-        rivalPegId: null,
-      }))
-    };
+      pegsPerPlayer: PEGS_PER_PLAYER,
+      peg: FX.peg,
+      assignPegNickname: assignPegNickname,
+      assignPegPersonality: assignPegPersonality
+    });
     // Place first peg on the player's home hole to start
     const homeHole = `home-${bp}`;
     player.pegs[0].holeId = homeHole;
@@ -429,13 +447,38 @@ function initGame(playerCount = 2, config = {}) {
   }
   state.players.set('list', players);
 
+  // Seal the match (`m = x · y · z`, D7 sealM). The match seed is
+  // exposed for inspection / future lens consumers; the legacy `state`
+  // tables remain the live mutation surface for now.
+  if (FX.match && FX.board) {
+    try {
+      const boardSeed = FX.board.create({
+        clockwiseTrack: CLOCKWISE_TRACK,
+        getHoleType: getHoleType,
+        safeZoneSize: SAFE_ZONE_SIZE
+      });
+      state.meta.set('match', FX.match.create({
+        players: players,
+        board: boardSeed,
+        seed: state.meta.get('seed'),
+        humanName: humanName,
+        humanAvatar: humanAvatar,
+        aiDifficulty: aiDifficulty
+      }));
+    } catch (e) {
+      console.warn('[FT-X] match seal skipped:', e && e.message);
+    }
+  }
+
   // ─── Peg Matrix (substrate) ───
   // peg(id) | color | position(hole) | state
   syncPegMatrix();
 
   // Deck
   shuffleDeck();
-  log('Game started with ' + playerCount + ' players');
+  state.meta.set('launchObject', config.launchObject || null);
+
+  log('Game started with ' + effectivePlayerCount + ' players');
 
   // Disable draw until camera + avatar blink are done
   const drawBtn = document.getElementById('draw-btn');

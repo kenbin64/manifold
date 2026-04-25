@@ -7,11 +7,21 @@
 
 Site: kensgames.com
 Origin: VPS at 172.81.62.217 (proxied via Cloudflare)
-Auth: JWT-based (`kg_token` in localStorage), managed by Node.js server on port 3000.
+Auth: **Google SSO is the primary login.** The browser obtains a Google ID
+token via Google Identity Services (GIS), POSTs it to `/api/auth/google`, and
+the Node.js auth server (port 3000) returns a `kg_token` JWT stored in
+`localStorage`. There is no in-house registration UI and no email-verification
+flow on the landing page.
 
-**Auth model:** The application manages its own login. Cloudflare Access is used ONLY to
-hard-gate `/admin*`. All other login enforcement is handled by the app's own profile_gate.js
-substrate — Cloudflare simply proxies those pages without any Access policy.
+Cloudflare Access is used ONLY to hard-gate `/admin*`. All other login
+enforcement is handled by the app's own profile_gate.js substrate using the
+`kg_token` minted from the Google ID token.
+
+A legacy username/password sign-in panel exists in the modal (hidden by
+default, reachable via a small "Legacy username/password" link) so that
+pre-SSO accounts (e.g. `Ken`, `kbingh`) can still sign in via
+`/api/auth/login`. New account creation through that path is no longer
+exposed in the UI.
 
 ---
 

@@ -1136,7 +1136,8 @@
       if (engine.running) return;
 
       if (placementMode && selectedTool) {
-        // Place new part
+        // Place new part. Click drops the part where it landed; the user
+        // can click it again later to pick it up and reposition.
         const pt = raycastToGround(e);
         if (pt) {
           const snapped = snapPosition({ x: pt.x, y: 0.5, z: pt.z });
@@ -1144,9 +1145,10 @@
           placementMode = false;
           selectedTool = null;
           renderer.hideGhost();
-          // Immediately pick up the newly placed part
-          startDragging(node.id, e);
+          selectNode(node.id);
+          if (autoConnectEnabled) tryAutoConnect(node.id);
           updateStats();
+          document.querySelectorAll('.part-btn').forEach(b => b.classList.remove('selected'));
         }
       } else {
         // Pick up existing part

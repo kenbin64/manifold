@@ -129,8 +129,12 @@
           const reportedPath = (d.game_lobby_path || d.game_path || '');
           const isFastTrack = (d.game_id === 'fasttrack') || (typeof reportedPath === 'string' && reportedPath.includes('/fasttrack/'));
 
+          // Use the unified /play/ page for all games — it handles ?code=
+          // and runs the proper guest-or-auth join flow. The previous
+          // /fasttrack/join.html target doesn't exist and silently lands
+          // joiners on the FastTrack landing page with no code handling.
           const rawPath = isFastTrack
-            ? '/fasttrack/join.html'
+            ? `/play/?game=fasttrack`
             : (d.game_lobby_path || d.game_path || '/lobby/');
 
           const url = new URL(rawPath, location.origin);

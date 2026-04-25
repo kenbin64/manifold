@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Match — Ken's Games</title>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(160deg, #0a0a14, #14142a 60%, #0a0a14);
+      color: #e8e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+    }
+
+    header {
+      width: 100%;
+      max-width: 720px;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0.04em;
+      color: #c0c0e0;
+      font-weight: 500;
+    }
+
+    .meta {
+      font-size: 12px;
+      opacity: 0.6;
+      font-family: ui-monospace, Menlo, monospace;
+    }
+
+    .panel {
+      width: 100%;
+      max-width: 720px;
+      background: rgba(20, 20, 40, 0.6);
+      border: 1px solid rgba(120, 120, 200, 0.2);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .players {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .player {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 999px;
+      border: 1px solid rgba(120, 120, 200, 0.2);
+      font-size: 14px;
+    }
+
+    .player.active {
+      border-color: #ffb020;
+      box-shadow: 0 0 0 1px rgba(255, 176, 32, 0.3), 0 0 12px rgba(255, 176, 32, 0.15);
+    }
+
+    .player.me {
+      background: rgba(80, 160, 255, 0.12);
+    }
+
+    .player .ai {
+      font-size: 10px;
+      opacity: 0.6;
+      margin-left: 4px;
+    }
+
+    .card-area {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 24px;
+    }
+
+    .card {
+      width: 140px;
+      height: 200px;
+      border-radius: 14px;
+      background: linear-gradient(160deg, #fff, #d0d0e0);
+      color: #1a1a2e;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 14px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+      user-select: none;
+      font-family: Georgia, serif;
+    }
+
+    .card.empty {
+      background: rgba(255, 255, 255, 0.05);
+      color: #6060a0;
+      border: 1px dashed rgba(120, 120, 200, 0.3);
+      align-items: center;
+      justify-content: center;
+      box-shadow: none;
+      font-style: italic;
+      font-family: system-ui;
+    }
+
+    .card .corner {
+      font-size: 22px;
+      font-weight: 600;
+    }
+
+    .card .corner.bottom {
+      align-self: flex-end;
+      transform: rotate(180deg);
+    }
+
+    .card .pip {
+      text-align: center;
+      font-size: 56px;
+    }
+
+    .card.red {
+      color: #b01030;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    button {
+      padding: 12px 24px;
+      border-radius: 8px;
+      border: 1px solid rgba(120, 120, 200, 0.3);
+      background: linear-gradient(180deg, #4060c0, #304090);
+      color: white;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.03em;
+      transition: transform 0.1s, box-shadow 0.1s;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(80, 120, 255, 0.3);
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    button.secondary {
+      background: linear-gradient(180deg, #404060, #303040);
+    }
+
+    .log {
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      opacity: 0.85;
+    }
+
+    .log .entry {
+      padding: 2px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .status {
+      font-size: 13px;
+      padding: 6px 10px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    .status.ok {
+      background: rgba(80, 200, 120, 0.15);
+      color: #80e0a0;
+    }
+
+    .status.warn {
+      background: rgba(255, 176, 32, 0.15);
+      color: #ffb020;
+    }
+
+    .status.err {
+      background: rgba(255, 80, 80, 0.15);
+      color: #ff8080;
+    }
+
+    .turn-banner {
+      text-align: center;
+      font-size: 16px;
+      padding: 10px;
+    }
+
+    .turn-banner.mine {
+      color: #80e0a0;
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>MATCH VIEWER · v0 · draw-loop</h1>
+    <div class="meta" id="meta-line">connecting…</div>
+  </header>
+
+  <div class="panel">
+    <div class="players" id="players"></div>
+    <div class="turn-banner" id="turn-banner"></div>
+  </div>
+
+  <div class="panel">
+    <div class="card-area">
+      <div class="card empty" id="card">no card drawn yet</div>
+      <div class="actions">
+        <button id="btn-draw" disabled>Draw a card</button>
+        <button id="btn-pass" class="secondary" disabled>Pass</button>
+      </div>
+      <div id="status" class="status"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div style="font-size: 12px; opacity: 0.5; margin-bottom: 8px;">EVENT LOG</div>
+    <div class="log" id="log"></div>
+  </div>
+
+  <script>
+    // ─── Boot ──────────────────────────────────────────────────────────
+    const params = new URLSearchParams(location.search);
+    const matchId = params.get('match') || sessionStorage.getItem('kg_match_id');
+    if (!matchId) {
+      document.body.innerHTML = '<p style="padding:40px">No match id — return to <a href="/play/" style="color:#80c0ff">/play</a></p>';
+      throw new Error('no match');
+    }
+
+    const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const WS_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+      ? `ws://${location.hostname}:8765`
+      : `${wsProtocol}//${location.host}/ws`;
+
+    const $ = id => document.getElementById(id);
+    let myUserId = sessionStorage.getItem('kg_my_user_id') || '';
+    const token = localStorage.getItem('kg_token') || '';
+    const username = localStorage.getItem('kg_username') || 'Player';
+    const avatarId = localStorage.getItem('kg_avatar') || '🎮';
+    const setStatus = (text, kind = 'ok') => { const el = $('status'); el.className = 'status ' + kind; el.textContent = text; };
+    const log = (line) => {
+      const el = $('log');
+      const d = document.createElement('div');
+      d.className = 'entry';
+      d.textContent = line;
+      el.appendChild(d);
+      el.scrollTop = el.scrollHeight;
+    };
+
+    // ─── State ─────────────────────────────────────────────────────────
+    let snap = null;
+    let sock = null;
+    let nonceCounter = 0;
+    const newNonce = () => `${Date.now().toString(36)}-${++nonceCounter}`;
+
+    // ─── Render ────────────────────────────────────────────────────────
+    function render() {
+      if (!snap) return;
+      $('meta-line').textContent = `match ${snap.matchId} · v${snap.version}`;
+
+      const players = snap.x.players || [];
+      const turnIdx = snap.state.turn;
+      const myTurn = players[turnIdx] && players[turnIdx].user_id === myUserId;
+
+      // Players
+      const root = $('players');
+      root.innerHTML = '';
+      players.forEach((p, i) => {
+        const node = document.createElement('div');
+        node.className = 'player' + (i === turnIdx ? ' active' : '') + (p.user_id === myUserId ? ' me' : '');
+        node.innerHTML = `<span>${escapeHtml(p.avatar_id || '👤')}</span><span>${escapeHtml(p.username || 'Player')}</span>${p.is_ai ? '<span class="ai">AI</span>' : ''}`;
+        root.appendChild(node);
+      });
+
+      // Turn banner
+      const banner = $('turn-banner');
+      if (myTurn) {
+        banner.className = 'turn-banner mine';
+        banner.textContent = '➤ Your turn';
+      } else {
+        banner.className = 'turn-banner';
+        const who = players[turnIdx];
+        banner.textContent = who ? `Waiting for ${who.username}…` : 'Waiting…';
+      }
+
+      // Card
+      const card = $('card');
+      const last = snap.state.lastCard;
+      if (last) {
+        const isRed = last.suit === '♥' || last.suit === '♦';
+        card.className = 'card' + (isRed ? ' red' : '');
+        card.innerHTML = `
+          <div class="corner">${last.rank}${last.suit}</div>
+          <div class="pip">${last.suit}</div>
+          <div class="corner bottom">${last.rank}${last.suit}</div>`;
+      } else {
+        card.className = 'card empty';
+        card.textContent = 'no card drawn yet';
+      }
+
+      // Buttons
+      $('btn-draw').disabled = !myTurn;
+      $('btn-pass').disabled = !myTurn;
+
+      // Log (sync from snapshot)
+      const logEl = $('log');
+      const desired = (snap.state.log || []).join('\n');
+      if (logEl.dataset.last !== desired) {
+        logEl.dataset.last = desired;
+        logEl.innerHTML = '';
+        (snap.state.log || []).forEach(line => log(line));
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    // ─── Send intent ───────────────────────────────────────────────────
+    function sendIntent(action, args) {
+      if (!sock || sock.readyState !== 1) return;
+      sock.send(JSON.stringify({
+        type: 'match_intent',
+        matchId,
+        by: myUserId,
+        action,
+        args: args || null,
+        nonce: newNonce(),
+      }));
+    }
+
+    $('btn-draw').addEventListener('click', () => sendIntent('draw'));
+    $('btn-pass').addEventListener('click', () => sendIntent('pass'));
+
+    // ─── Connect ───────────────────────────────────────────────────────
+    function connect() {
+      setStatus('connecting…', 'warn');
+      sock = new WebSocket(WS_URL);
+      sock.onopen = () => {
+        setStatus('authenticating…', 'warn');
+        if (token) {
+          sock.send(JSON.stringify({ type: 'auth', token, username, avatar_id: avatarId }));
+        } else {
+          sock.send(JSON.stringify({ type: 'guest_login', name: username || `Guest_${Math.random().toString(36).slice(2, 6)}`, avatar_id: avatarId }));
+        }
+      };
+      sock.onmessage = (evt) => {
+        let msg;
+        try { msg = JSON.parse(evt.data); } catch { return; }
+        if (msg.type === 'auth_success') {
+          // Capture our user id if the lobby just minted one
+          const uid = (msg.user && msg.user.user_id) || msg.user_id;
+          if (uid) {
+            sessionStorage.setItem('kg_my_user_id', uid);
+            myUserId = uid;
+          }
+          setStatus('subscribing…', 'warn');
+          sock.send(JSON.stringify({ type: 'match_subscribe', matchId }));
+          return;
+        }
+        if (msg.type === 'match_snapshot' && msg.matchId === matchId) {
+          snap = msg;
+          setStatus(`live · v${snap.version}`, 'ok');
+          render();
+          return;
+        }
+        if (msg.type === 'match_error') {
+          setStatus('error: ' + msg.error, 'err');
+          return;
+        }
+      };
+      sock.onclose = () => {
+        setStatus('disconnected — retrying in 2s', 'err');
+        setTimeout(connect, 2000);
+      };
+      sock.onerror = () => { /* onclose handles retry */ };
+    }
+
+    connect();
+  </script>
+</body>
+
+</html>

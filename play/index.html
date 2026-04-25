@@ -433,7 +433,9 @@
     }
 
     .card-status.s-waiting {
-      color: var(--text-muted);
+      /* Amber per design: invitee not yet ready (status light = amber). */
+      color: #ffb020;
+      text-shadow: 0 0 6px rgba(255, 176, 32, 0.55);
     }
 
     .card-status.s-open {
@@ -556,6 +558,30 @@
     .btn-cyan:hover:not(:disabled) {
       background: rgba(0, 255, 255, 0.18);
       box-shadow: 0 0 12px rgba(0, 255, 255, 0.3);
+    }
+
+    .btn-ready {
+      background: rgba(255, 176, 32, 0.12);
+      border-color: rgba(255, 176, 32, 0.5);
+      color: #ffcc6b;
+      text-shadow: 0 0 8px rgba(255, 176, 32, 0.35);
+    }
+
+    .btn-ready:hover:not(:disabled) {
+      background: rgba(255, 176, 32, 0.2);
+      box-shadow: 0 0 12px rgba(255, 176, 32, 0.25);
+    }
+
+    .btn-ready.is-connected {
+      background: rgba(0, 255, 65, 0.12);
+      border-color: rgba(0, 255, 65, 0.5);
+      color: var(--neon-green);
+      text-shadow: 0 0 8px rgba(0, 255, 65, 0.35);
+    }
+
+    .btn-ready.is-connected:hover:not(:disabled) {
+      background: rgba(0, 255, 65, 0.2);
+      box-shadow: 0 0 12px rgba(0, 255, 65, 0.25);
     }
 
     /* ── Toast ── */
@@ -811,14 +837,14 @@
         </div>
         <div class="setting-row" id="solo-row-bots">
           <div>
-            <div class="setting-label">AI Bots</div>
-            <div class="setting-hint">How many bots to add</div>
+            <div class="setting-label">Players</div>
+            <div class="setting-hint">Total at the table (you + AI bots)</div>
           </div>
           <select class="setting-select" id="solo-bots">
-            <option value="0" selected>0</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
+            <option value="1">2 (you + 1 bot)</option>
+            <option value="2" selected>3 (you + 2 bots)</option>
+            <option value="3">4 (you + 3 bots)</option>
+            <option value="0">Just me</option>
           </select>
         </div>
         <div class="setting-row" id="solo-row-music">
@@ -842,7 +868,8 @@
           </label>
         </div>
       </div>
-      <button class="btn btn-launch btn-full" onclick="launchSoloConfigured()">🚀 Launch Solo Game</button>
+      <button class="btn btn-launch btn-full" onclick="launchSoloConfigured()" id="btn-solo-launch">🚀 Launch Solo
+        Game</button>
       <a href="/" class="btn btn-secondary btn-full" style="margin-top:0.5rem;display:block;text-align:center;">← Back
         to Games</a>
     </div>
@@ -853,11 +880,11 @@
       <div class="join-form">
         <input type="text" id="join-code-input" maxlength="6" placeholder="ABC123" autocomplete="off"
           oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')submitJoinCode()">
-        <button class="btn btn-cyan btn-full" onclick="submitJoinCode()">→ Join Game</button>
+        <button class="btn btn-cyan btn-full" onclick="submitJoinCode()" id="btn-join-code">→ Join Game</button>
       </div>
     </div>
 
-    <!-- Phase: Join Confirm (invitee arrives via code URL) -->
+    <!-- Phase: Join Confirm (invitee arrives via code URL) — name + avatar picker -->
     <div class="phase" id="phase-join-confirm">
       <div style="text-align:center;padding:1.5rem 0 0.5rem;">
         <div style="font-size:2.5rem;margin-bottom:0.5rem;">🎮</div>
@@ -868,10 +895,21 @@
         <div class="code-label">Game Code</div>
         <div class="code-display" id="join-confirm-code">------</div>
       </div>
-      <p id="join-confirm-label"
-        style="text-align:center;color:var(--text-muted);font-size:0.9rem;margin-bottom:1.5rem;">Join the private game
+      <p id="join-confirm-label" style="text-align:center;color:var(--text-muted);font-size:0.9rem;margin-bottom:1rem;">
+        Join the private game
       </p>
-      <button class="btn btn-cyan btn-full" onclick="joinConfirmedCode()">→ Join Game</button>
+
+      <p class="section-title">Your Name</p>
+      <div class="join-form" style="margin-bottom:0.6rem;">
+        <input type="text" id="invitee-name-input" maxlength="20" placeholder="Pick a name…" autocomplete="off">
+      </div>
+
+      <p class="section-title">Pick an Avatar</p>
+      <div id="invitee-avatar-grid"
+        style="display:grid;grid-template-columns:repeat(8,1fr);gap:0.4rem;margin-bottom:1rem;">
+      </div>
+
+      <button class="btn btn-cyan btn-full" onclick="joinConfirmedCode()" id="btn-join-confirm">→ Join Game</button>
       <a href="/" class="btn btn-secondary btn-full" style="margin-top:0.5rem;display:block;text-align:center;">← Back
         to Games</a>
     </div>
@@ -974,7 +1012,7 @@
         <button class="btn btn-secondary" onclick="addBot()" id="btn-add-bot" style="display:none;">🤖 Add Bot</button>
         <button class="btn btn-danger" onclick="removeBot()" id="btn-remove-bot" style="display:none;">➖ Remove
           Bot</button>
-        <button class="btn btn-secondary" onclick="toggleReady()" id="btn-ready">⬜ I'm Ready</button>
+        <button class="btn btn-ready" onclick="toggleReady()" id="btn-ready">🟠 Connecting...</button>
       </div>
       <p class="launch-note" id="launch-note" style="display:none;">Add at least 1 bot or invite a friend to start</p>
       <button class="btn btn-launch btn-full" onclick="launchGame()" id="btn-launch" disabled style="display:none;">🚀
@@ -993,14 +1031,14 @@
       <div class="multi-option-card" onclick="gotoMultiBrowse()">
         <div class="multi-opt-icon">🔍</div>
         <div>
-          <div class="multi-opt-title">Browse Open Games</div>
+          <div class="multi-opt-title" id="multi-browse-title">Browse Open Games</div>
           <div class="multi-opt-desc">See rooms other players have created and request to join</div>
         </div>
       </div>
       <div class="multi-option-card" onclick="gotoMatchmake()">
         <div class="multi-opt-icon">⚡</div>
         <div>
-          <div class="multi-opt-title">Quick Match</div>
+          <div class="multi-opt-title" id="multi-match-title">Quick Match</div>
           <div class="multi-opt-desc">Auto-match with other players waiting to play now</div>
         </div>
       </div>
@@ -1010,7 +1048,7 @@
 
     <!-- Phase: Browse Open Games -->
     <div class="phase" id="phase-browse">
-      <p class="section-title">Open Games</p>
+      <p class="section-title" id="browse-title">Open Games</p>
       <div id="browse-list"></div>
       <button class="btn btn-secondary btn-full" onclick="loadBrowse()" style="margin-top:0.5rem;">↺ Refresh</button>
       <a href="/" class="btn btn-secondary btn-full" style="margin-top:0.4rem;display:block;text-align:center;">←
@@ -1019,7 +1057,7 @@
 
     <!-- Phase: Matchmaker -->
     <div class="phase" id="phase-matchmake">
-      <p class="section-title">Quick Match</p>
+      <p class="section-title" id="matchmake-title">Quick Match</p>
       <div style="text-align:center;margin:2rem 0 1rem;">
         <div class="spinner" style="margin:0 auto 1rem;"></div>
         <div style="color:var(--neon-cyan);font-size:0.88rem;letter-spacing:0.1em;">SEARCHING FOR PLAYERS...</div>
@@ -1206,6 +1244,8 @@
       connected: false,
       user: null,
       session: null,
+      createSessionRequested: false,
+      pendingCreatePrivate: null,
       shareCode: null,
       shareUrl: null,
       myReady: false,
@@ -1219,6 +1259,8 @@
     document.addEventListener('DOMContentLoaded', boot);
 
     async function boot() {
+      setGameProcedureLabels();
+
       // Set header
       if (GAME_INFO) {
         document.getElementById('hdr-game-name').textContent = GAME_INFO.name;
@@ -1290,10 +1332,12 @@
     function connectLobby() {
       const sock = new WebSocket(WS_URL);
       state.socket = sock;
+      updateReadyButtonConnectionState();
 
       sock.addEventListener('open', () => {
         state.connected = true;
         state.reconnectAttempts = 0;
+        updateReadyButtonConnectionState();
         authenticate();
       });
 
@@ -1305,6 +1349,7 @@
 
       sock.addEventListener('close', () => {
         state.connected = false;
+        updateReadyButtonConnectionState();
         if (state.reconnectAttempts < 5) {
           state.reconnectAttempts++;
           setTimeout(connectLobby, 2000 * state.reconnectAttempts);
@@ -1322,6 +1367,123 @@
       if (state.socket?.readyState === WebSocket.OPEN) {
         state.socket.send(JSON.stringify(msg));
       }
+    }
+
+    async function createLaunchObjectRef(session, gameId, matchId, extraParams) {
+      const token = localStorage.getItem('kg_token');
+      if (!token || !session?.session_id) return null;
+
+      try {
+        const response = await fetch('/ws/launch-object', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            session_id: session.session_id,
+            game_id: gameId,
+            match_id: matchId || null,
+            extra_params: extraParams || {},
+          }),
+        });
+        if (!response.ok) return null;
+
+        const data = await response.json();
+        const ref = data && data.launch_ref;
+        if (!ref || !ref.launch_id || !ref.sig) return null;
+        return ref;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function canonicalGameId(gameId) {
+      const raw = String(gameId || '').toLowerCase().trim();
+      if (raw === 'ft' || raw === 'fast-track' || raw === 'fast_track') return 'fasttrack';
+      if (raw === '4dtictactoe' || raw === 'tictactoe') return '4dconnect';
+      if (raw === 'brickbreaker') return 'brickbreaker3d';
+      return raw;
+    }
+
+    function isFastTrackGame(gameId, session) {
+      const canon = canonicalGameId(gameId);
+      if (canon === 'fasttrack') return true;
+      const name = String(session?.game_name || '').toLowerCase();
+      return name.includes('fast track');
+    }
+
+    function buildPlayUrl(gameId, mode, code) {
+      const canon = canonicalGameId(gameId || GAME_ID || 'fasttrack');
+      const q = new URLSearchParams();
+      q.set('game', canon);
+      if (mode) q.set('mode', mode);
+      if (code) q.set('code', code);
+      return `${location.origin}/play/?${q.toString()}`;
+    }
+
+    function ensureGameParamInUrl(gameId) {
+      const canon = canonicalGameId(gameId);
+      if (!canon) return;
+      const current = new URL(location.href);
+      const currentGame = canonicalGameId(current.searchParams.get('game'));
+      if (currentGame === canon) return;
+      current.searchParams.set('game', canon);
+      history.replaceState(null, '', `${current.pathname}?${current.searchParams.toString()}${current.hash}`);
+    }
+
+    function setGameProcedureLabels() {
+      const gameLabel = GAME_INFO?.name || 'Game';
+
+      const soloBtn = document.getElementById('btn-solo-launch');
+      if (soloBtn) soloBtn.textContent = `🚀 Launch Solo ${gameLabel}`;
+
+      const joinCodeBtn = document.getElementById('btn-join-code');
+      if (joinCodeBtn) joinCodeBtn.textContent = `→ Join ${gameLabel}`;
+
+      const joinConfirmBtn = document.getElementById('btn-join-confirm');
+      if (joinConfirmBtn) joinConfirmBtn.textContent = `→ Join ${gameLabel}`;
+
+      const launchBtn = document.getElementById('btn-launch');
+      if (launchBtn) launchBtn.textContent = `🚀 Launch ${gameLabel}`;
+
+      const multiBrowseTitle = document.getElementById('multi-browse-title');
+      if (multiBrowseTitle) multiBrowseTitle.textContent = `Browse Open ${gameLabel} Games`;
+
+      const multiMatchTitle = document.getElementById('multi-match-title');
+      if (multiMatchTitle) multiMatchTitle.textContent = `Quick Match ${gameLabel}`;
+
+      const browseTitle = document.getElementById('browse-title');
+      if (browseTitle) browseTitle.textContent = `Open ${gameLabel} Games`;
+
+      const matchmakeTitle = document.getElementById('matchmake-title');
+      if (matchmakeTitle) matchmakeTitle.textContent = `${gameLabel} Quick Match`;
+    }
+
+    function sessionMatchesCurrentGame(session) {
+      if (!session) return false;
+      const requested = canonicalGameId(GAME_ID);
+      if (!requested) return true;
+      return canonicalGameId(session.game_id) === requested;
+    }
+
+    function ensureHostedSession(isPrivate) {
+      if (state.session) {
+        if (sessionMatchesCurrentGame(state.session)) {
+          applySettingsToUI(state.session);
+          renderWaitingRoom();
+          showPhase('waiting');
+        } else {
+          state.pendingCreatePrivate = !!isPrivate;
+          state.session = null;
+          state.createSessionRequested = false;
+          setLoadingLabel('Preparing room...');
+          showPhase('loading');
+          send({ type: 'leave_session' });
+        }
+        return;
+      }
+      createSession(isPrivate);
     }
 
     function authenticate() {
@@ -1361,6 +1523,7 @@
         case 'session_joined': return onSessionJoined(msg);
         case 'player_joined': return onPlayerJoined(msg);
         case 'player_left': return onPlayerLeft(msg);
+        case 'ready_update': return onReadyChanged(msg);
         case 'player_ready_changed': return onReadyChanged(msg);
         case 'game_started': return onGameStarted(msg);
         case 'left_session': return onLeftSession(msg);
@@ -1382,18 +1545,19 @@
       setLoadingLabel('Setting up game...');
 
       if (CODE_IN) {
-        // Invitee: show a confirmation page rather than auto-joining
+        // Invitee: show onboarding (name + avatar) before sending join_by_code.
         state.pendingJoinCode = CODE_IN;
         document.getElementById('join-confirm-code').textContent = CODE_IN.toUpperCase();
         const gameName = GAME_INFO?.name || 'a game';
         document.getElementById('join-confirm-label').textContent = `Join the private ${gameName} room`;
+        buildInviteeAvatarGrid();
         showPhase('join-confirm');
       } else if (MODE === 'host') {
-        createSession(true);
+        ensureHostedSession(true);
       } else if (MODE === 'private') {
-        createSession(true);
+        ensureHostedSession(true);
       } else if (MODE === 'public') {
-        createSession(false);
+        ensureHostedSession(false);
       } else if (MODE === 'multi') {
         showPhase('multi-menu');
       } else if (MODE === 'browse') {
@@ -1422,6 +1586,8 @@
     // Session creation
     // =============================================================================
     function createSession(isPrivate) {
+      if (state.session || state.createSessionRequested) return;
+      state.createSessionRequested = true;
       const maxPlayers = GAME_INFO?.defaultMaxPlayers || 4;
       send({
         type: 'create_session',
@@ -1441,11 +1607,20 @@
     }
 
     function onSessionCreated(msg) {
+      state.createSessionRequested = false;
       state.session = msg.session;
+      ensureGameParamInUrl(msg.session?.game_id || GAME_ID);
       const code = msg.share_code || msg.session.session_code;
-      const shareUrl = `${location.origin}/play/?code=${encodeURIComponent(code)}`;
+      const gameForUrl = canonicalGameId(msg.session?.game_id || GAME_ID || 'fasttrack');
+      const shareUrl = buildPlayUrl(gameForUrl, null, code);
       state.shareCode = code;
       state.shareUrl = shareUrl;
+
+      // Canonical host URL for the creator flow.
+      try {
+        const hostUrl = buildPlayUrl(gameForUrl, 'host', null);
+        if (location.href !== hostUrl) history.replaceState(null, '', hostUrl);
+      } catch (_) { }
 
       document.getElementById('room-code').textContent = code;
       document.getElementById('share-url-input').value = shareUrl;
@@ -1457,7 +1632,9 @@
     }
 
     function onSessionJoined(msg) {
+      state.createSessionRequested = false;
       state.session = msg.session;
+      ensureGameParamInUrl(msg.session?.game_id || GAME_ID);
       // Sync user_id from session player data when it might be missing (e.g. guest flow)
       if (state.user && !state.user.user_id) {
         const me = (msg.session.players || []).find(p => p.username === state.user.username && !p.is_ai);
@@ -1472,8 +1649,13 @@
 
     function onSessionUpdate(msg) {
       state.session = msg.session;
-      if (document.getElementById('phase-waiting').classList.contains('active')) {
+      ensureGameParamInUrl(msg.session?.game_id || GAME_ID);
+      const waitingActive = document.getElementById('phase-waiting').classList.contains('active');
+      const shouldResumeWaiting = !CODE_IN && (MODE === 'host' || MODE === 'private' || MODE === 'public')
+        && sessionMatchesCurrentGame(state.session);
+      if (waitingActive || shouldResumeWaiting) {
         renderWaitingRoom();
+        if (!waitingActive && shouldResumeWaiting) showPhase('waiting');
       }
     }
 
@@ -1497,12 +1679,30 @@
 
     function onReadyChanged(msg) {
       if (msg.session) state.session = msg.session;
+      if (!msg.session && state.session && msg.user_id) {
+        const msgUserId = String(msg.user_id);
+        const target = (state.session.players || []).find(p => String(p.user_id || '') === msgUserId);
+        if (target && typeof msg.ready === 'boolean') {
+          target.ready = !!msg.ready;
+          target.is_ready = !!msg.ready;
+          target.isReady = !!msg.ready;
+        }
+      }
       if (document.getElementById('phase-waiting').classList.contains('active')) {
         renderWaitingRoom();
       }
     }
 
     function onLeftSession() {
+      if (state.pendingCreatePrivate !== null) {
+        const isPrivate = state.pendingCreatePrivate;
+        state.pendingCreatePrivate = null;
+        state.session = null;
+        state.createSessionRequested = false;
+        createSession(isPrivate);
+        return;
+      }
+
       state.session = null;
       if (CODE_IN) {
         showPhase('join-confirm');
@@ -1649,12 +1849,12 @@
     // =============================================================================
     // Game Started — redirect to the game board
     // =============================================================================
-    function onGameStarted(msg) {
+    async function onGameStarted(msg) {
       const session = msg.session;
       const myUserId = state.user?.user_id || state.user?.id || '';
       const me = session.players?.find(p => p.user_id === myUserId) || session.players?.[0];
       const myEmoji = avatarEmoji(me?.avatar_id);
-      const gameId = session.game_id || GAME_ID;
+      const gameId = canonicalGameId(session.game_id || GAME_ID);
       const gameInfo = GAME_REGISTRY[gameId];
 
       if (!gameInfo) {
@@ -1687,21 +1887,120 @@
         }
       } catch (_) { }
 
+      // ── Authoritative match-server slice (intent/snapshot loop) ──
+      // When the lobby created an authoritative match, route everyone to the
+      // minimal match viewer. Legacy local-game URL kept below for games not yet ported.
+      const matchId = msg.match_id || session.match_id;
+      if (matchId && !isFastTrackGame(gameId, session)) {
+        try { sessionStorage.setItem('kg_match_id', matchId); } catch (_) { }
+        window.location.href = `/play/match.html?match=${encodeURIComponent(matchId)}`;
+        return;
+      }
+
       // Build redirect URL
       const launchParamsFn = gameInfo.launchParams;
       const extraParams = launchParamsFn ? launchParamsFn(session, me, myEmoji, WS_URL) : {};
       const urlParams = new URLSearchParams(extraParams);
+
+      // Canonical launch metadata for all games.
+      urlParams.set('game', gameId);
+      urlParams.set('mode', 'multi');
+      urlParams.set('session', session.session_id || '');
+      urlParams.set('code', session.session_code || '');
+      urlParams.set('players', String((session.players || []).length));
+
+      const launchRoster = (session.players || []).map(p => ({
+        user_id: p.user_id,
+        username: p.username,
+        avatar_id: p.avatar_id,
+        avatar: avatarEmoji(p.avatar_id),
+        is_ai: !!(p.is_ai || p.is_bot),
+        is_host: !!p.is_host,
+      }));
+
+      const launchRef = await createLaunchObjectRef(session, gameId, matchId, extraParams);
+      if (launchRef) {
+        urlParams.set('launch', launchRef.launch_id);
+        urlParams.set('sig', launchRef.sig);
+        try {
+          const refJson = JSON.stringify(launchRef);
+          const prefix = gameInfo.sessionStoragePrefix || gameId;
+          sessionStorage.setItem('kg_launch_ref', refJson);
+          sessionStorage.setItem(`${prefix}_launch_ref`, refJson);
+        } catch (_) { }
+      } else {
+        // Guest/no-token compatibility fallback.
+        urlParams.set('playerNames', launchRoster.map(p => p.username || '').join(','));
+        urlParams.set('playerAvatars', launchRoster.map(p => p.avatar_id || '').join(','));
+        urlParams.set('roster', JSON.stringify(launchRoster));
+      }
+
       window.location.href = `${gameInfo.gameUrl}?${urlParams.toString()}`;
     }
 
     // =============================================================================
     // Join Confirm (invitee clicks Join Game button)
     // =============================================================================
+    // ─── Invitee onboarding: avatar picker for the join-confirm panel ───
+    const INVITEE_AVATARS = ['🎮', '🚀', '🛸', '🤖', '🎲', '🦄', '🐉', '🐺', '🦊', '🐱', '🐼', '🐯', '🐸', '🐵', '🦁', '🐧', '🦉', '🦅', '🐙', '🦑', '🦋', '🌟', '⚡', '🔥', '🍀', '🍕', '🎯', '🎸', '🎺', '💎', '🌈', '🎃'];
+    function buildInviteeAvatarGrid() {
+      const grid = document.getElementById('invitee-avatar-grid');
+      if (!grid || grid.dataset.built) return;
+      const stored = localStorage.getItem('kg_avatar') || '🎮';
+      let current = stored;
+      try { const p = JSON.parse(stored); current = (p && (p.emoji || p.id)) || stored; } catch (e) { }
+      if (!INVITEE_AVATARS.includes(current)) current = '🎮';
+      grid.innerHTML = INVITEE_AVATARS.map(av => `
+        <button type="button" data-av="${av}"
+          style="font-size:1.3rem;padding:0.45rem 0;background:rgba(255,255,255,0.04);border:1px solid ${av === current ? 'var(--neon-cyan)' : 'rgba(255,255,255,0.1)'};border-radius:8px;cursor:pointer;color:#fff;">${av}</button>
+      `).join('');
+      grid.dataset.built = '1';
+      grid.dataset.selected = current;
+      grid.querySelectorAll('button[data-av]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          grid.dataset.selected = btn.dataset.av;
+          grid.querySelectorAll('button[data-av]').forEach(b => {
+            b.style.borderColor = (b.dataset.av === btn.dataset.av) ? 'var(--neon-cyan)' : 'rgba(255,255,255,0.1)';
+          });
+        });
+      });
+      // Prefill name from any prior choice
+      const nameInput = document.getElementById('invitee-name-input');
+      if (nameInput && !nameInput.value) {
+        const prior = (localStorage.getItem('kg_username') || localStorage.getItem('username') || '').trim();
+        nameInput.value = prior;
+      }
+    }
+
     function joinConfirmedCode() {
       if (!state.pendingJoinCode) return;
+      const nameInput = document.getElementById('invitee-name-input');
+      const grid = document.getElementById('invitee-avatar-grid');
+      const name = (nameInput && nameInput.value || '').trim();
+      if (!name) {
+        showToast('Pick a name to join', 'error');
+        nameInput && nameInput.focus();
+        return;
+      }
+      const avatar = (grid && grid.dataset.selected) || '🎮';
+      // Persist for next visit and for the post-join player card.
+      try {
+        localStorage.setItem('kg_username', name);
+        localStorage.setItem('kg_avatar', avatar);
+      } catch (e) { }
+      // Update local user object so the waiting-room render shows our chosen identity
+      if (state.user) {
+        state.user.username = name;
+        state.user.avatar_id = avatar;
+      }
       setLoadingLabel('Joining game...');
       showPhase('loading');
-      send({ type: 'join_by_code', code: state.pendingJoinCode.toUpperCase() });
+      send({
+        type: 'join_by_code',
+        code: state.pendingJoinCode.toUpperCase(),
+        name: name,
+        avatar_id: avatar
+      });
     }
 
     // =============================================================================
@@ -1743,12 +2042,18 @@
     // =============================================================================
     // Waiting Room Render
     // =============================================================================
+    function playerReadyState(p) {
+      return !!(p && (p.ready === true || p.is_ready === true || p.isReady === true));
+    }
+
     function renderWaitingRoom() {
       const session = state.session;
       if (!session) return;
 
       const myUserId = state.user?.user_id || state.user?.id || '';
-      const amHost = !!(myUserId && session.host_id && session.host_id === myUserId);
+      const myUserIdStr = String(myUserId || '');
+      const hostIdStr = String(session.host_id || '');
+      const amHost = !!(myUserIdStr && hostIdStr && hostIdStr === myUserIdStr);
       const players = session.players || [];
       const maxPlayers = session.max_players || 4;
       const container = document.getElementById('player-slots');
@@ -1763,10 +2068,11 @@
       let html = '';
 
       for (const p of sorted) {
-        const isMe = p.user_id === myUserId;
-        const isActualHost = p.user_id === session.host_id;
+        const pUserIdStr = String(p.user_id || '');
+        const isMe = pUserIdStr === myUserIdStr || (!!state.user?.username && p.username === state.user.username);
+        const isActualHost = pUserIdStr === hostIdStr;
         const isBot = !!(p.is_ai || p.is_bot);
-        const isReady = !!p.ready || isActualHost; // host is always ready
+        const isReady = playerReadyState(p) || isActualHost; // host is always ready
 
         let cardClass = 'player-card';
         if (isActualHost) cardClass += ' is-host';
@@ -1823,15 +2129,18 @@
       document.getElementById('btn-remove-bot').style.display = (amHost && hasBots) ? '' : 'none';
 
       // Ready button — joiners only (host is implicitly ready)
-      const myPlayer = players.find(p => p.user_id === myUserId);
-      state.myReady = myPlayer?.ready || false;
+      const myPlayer = players.find(p => String(p.user_id || '') === myUserIdStr || (!!state.user?.username && p.username === state.user.username));
+      state.myReady = playerReadyState(myPlayer);
       const readyBtn = document.getElementById('btn-ready');
       readyBtn.style.display = amHost ? 'none' : '';
       if (!amHost) {
-        readyBtn.textContent = state.myReady ? '✅ Ready' : '⬜ I\'m Ready';
-        readyBtn.className = state.myReady
-          ? 'btn btn-primary'
-          : 'btn btn-secondary';
+        readyBtn.className = 'btn btn-ready';
+        updateReadyButtonConnectionState();
+        if (!state.connected) {
+          readyBtn.textContent = '🟠 Connecting...';
+        } else {
+          readyBtn.textContent = state.myReady ? '✅ Ready (Click to Unready)' : 'I\'m Ready';
+        }
       }
 
       // Launch button — host only
@@ -1839,8 +2148,8 @@
       const launchBtn = document.getElementById('btn-launch');
       launchBtn.style.display = amHost ? '' : 'none';
       if (amHost) {
-        const humanPlayers = players.filter(p => !(p.is_ai || p.is_bot) && p.user_id !== session.host_id);
-        const allReady = humanPlayers.length === 0 || humanPlayers.every(p => p.ready);
+        const humanPlayers = players.filter(p => !(p.is_ai || p.is_bot) && String(p.user_id || '') !== hostIdStr);
+        const allReady = humanPlayers.length === 0 || humanPlayers.every(p => playerReadyState(p));
         const canLaunch = players.length >= 2 && allReady;
         launchBtn.disabled = !canLaunch;
         if (players.length < 2) {
@@ -1867,10 +2176,38 @@
       send({ type: 'remove_bot' });
     }
 
+    function updateReadyButtonConnectionState() {
+      const readyBtn = document.getElementById('btn-ready');
+      if (!readyBtn) return;
+      readyBtn.classList.toggle('is-connected', !!state.connected);
+      readyBtn.disabled = !state.connected;
+      if (!state.connected && readyBtn.style.display !== 'none') {
+        readyBtn.textContent = '🟠 Connecting...';
+      }
+    }
+
     function toggleReady() {
-      state.myReady = !state.myReady;
-      send({ type: 'player_ready', ready: state.myReady });
-      document.getElementById('btn-ready').textContent = state.myReady ? '✅ Ready' : '⬜ I\'m Ready';
+      if (!state.connected) {
+        showToast('Connecting to lobby...', 'info');
+        return;
+      }
+
+      const nextReady = !state.myReady;
+      state.myReady = nextReady;
+      if (state.session && state.user) {
+        const myUserId = String(state.user.user_id || state.user.id || '');
+        const myPlayer = (state.session.players || []).find(p => String(p.user_id || '') === myUserId || (!!state.user.username && p.username === state.user.username));
+        if (myPlayer) {
+          myPlayer.ready = nextReady;
+          myPlayer.is_ready = nextReady;
+          myPlayer.isReady = nextReady;
+        }
+      }
+      if (document.getElementById('phase-waiting').classList.contains('active')) {
+        renderWaitingRoom();
+      }
+
+      send({ type: 'player_ready', ready: nextReady });
     }
 
     function launchGame() {

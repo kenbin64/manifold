@@ -1113,8 +1113,17 @@
   <script src="../../js/manifold.js?v=7"></script>
   <script src="../../js/substrates/manifold_ingestor.js"></script>
 
+    <!-- Dimensional `x` seed registry — pure identities (peg, avatar, player, board, match).
+       Must load BEFORE fasttrack-game-core.js so initGame can construct via factories.
+      See PARADIGM.md §1; modules expose window.FastTrackX.{peg,avatar,player,board,match}. -->
+  <script src="x/peg.x.js?v=x1"></script>
+    <script src="x/avatar.x.js?v=x1"></script>
+  <script src="x/player.x.js?v=x1"></script>
+  <script src="x/board.x.js?v=x1"></script>
+  <script src="x/match.x.js?v=x1"></script>
+
   <!-- Game engine (pure logic, reads/writes RepresentationTables) -->
-  <script src="fasttrack-game-core.js"></script>
+  <script src="fasttrack-game-core.js?v=x_seeds1"></script>
 
   <!-- 🜂 MANIFOLD SUBSTRATE — 5 SubstrateLenses on the Schwarz Diamond surface
        Loaded after game-core (so it can observe state) but before 3D renderer
@@ -1126,7 +1135,7 @@
   <script src="schwarz_diamond_renderer.js"></script>
 
   <!-- 3D renderer (reads from state tables, renders via Three.js; dispatches ft3d:ready) -->
-  <script src="fasttrack-3d.js"></script>
+  <script src="fasttrack-3d.js?v=brick1"></script>
 
   <script>
     // ── Settings panel wiring ──

@@ -433,6 +433,7 @@
     let selectedAvatar = 'robot';
     let pollTimer = null;
     let myReady = false;
+    let myPlayerName = '';
     let phase = 'setup'; // setup | waiting | started | ended
 
     function ah(extra) {
@@ -485,6 +486,7 @@
     // ── Join flow ─────────────────────────────────────────────────────────
     async function submitJoin() {
       const name = document.getElementById('inp-playername').value.trim();
+      myPlayerName = name;
       const errEl = document.getElementById('err-playername');
       if (!/^[A-Za-z0-9_ ]{2,20}$/.test(name)) {
         errEl.style.display = 'block'; return;
@@ -513,9 +515,15 @@
 
       guestToken = d.guestToken;
       sessionId = d.sessionId;
+      if (!myPlayerName && d.session?.players?.length) {
+        const mine = d.session.players.find(p => p.playername === name || p.username === name);
+        if (mine) myReady = !!(mine.ready || mine.isReady || mine.is_ready);
+      }
+      updateReadyUI();
       renderPlayers(d.session.players);
       setPhase('waiting');
       startPolling();
+      pollSession();
     }
 
     async function authJoin() {
@@ -534,20 +542,46 @@
         return;
       }
       sessionId = d.sessionId;
+      if (!myPlayerName && Array.isArray(d.session?.players)) {
+        const mine = d.session.players.find(p => p.isMe || p.me);
+        if (mine) {
+          myPlayerName = mine.playername || mine.username || myPlayerName;
+          myReady = !!(mine.ready || mine.isReady || mine.is_ready);
+        }
+      }
+      updateReadyUI();
       renderPlayers(d.session.players);
       setPhase('waiting');
       startPolling();
+      pollSession();
     }
 
     // ── Waiting room ──────────────────────────────────────────────────────
     async function toggleReady() {
       if (!sessionId) return;
-      const r = await fetch(`${API}/sessions/${sessionId}/ready`, { method: 'POST', headers: ah() });
-      const d = await r.json();
-      if (d.success) {
-        myReady = d.ready;
+      const previousReady = myReady;
+      myReady = !myReady;
+      updateReadyUI();
+      setStatus('waiting-status', myReady ? 'Marking ready…' : 'Marking unready…', 'info');
+
+      try {
+        const r = await fetch(`${API}/sessions/${sessionId}/ready`, { method: 'POST', headers: ah() });
+        const d = await r.json();
+        if (!r.ok || !d.success) {
+          myReady = previousReady;
+          updateReadyUI();
+          setStatus('waiting-status', d.error || 'Could not update ready state', 'err');
+          return;
+        }
+
+        if (typeof d.ready === 'boolean') myReady = d.ready;
         updateReadyUI();
-        renderPlayers(d.session.players);
+        if (d.session?.players) renderPlayers(d.session.players);
+        await pollSession();
+      } catch {
+        myReady = previousReady;
+        updateReadyUI();
+        setStatus('waiting-status', 'Network error while updating ready state', 'err');
       }
     }
 
@@ -575,6 +609,15 @@
 
         renderPlayers(s.players);
 
+        const mine = (s.players || []).find(p => {
+          const n = (p.playername || p.username || '').trim();
+          return !!myPlayerName && n && n === myPlayerName;
+        });
+        if (mine) {
+          myReady = !!(mine.ready || mine.isReady || mine.is_ready);
+          updateReadyUI();
+        }
+
         if (s.status === 'active' && s.gameUrl) {
           stopPolling();
           setStatus('waiting-status', 'Game starting…', 'ok');
@@ -582,7 +625,7 @@
           return;
         }
 
-        const ready = s.players.filter(p => p.ready).length;
+        const ready = s.players.filter(p => !!(p.ready || p.isReady || p.is_ready)).length;
         const total = s.players.length;
         setStatus('waiting-status', `${ready}/${total} players ready`, 'info');
       } catch { }
@@ -591,12 +634,13 @@
     function renderPlayers(players) {
       const row = document.getElementById('players-row');
       row.innerHTML = players.map(p => {
-        const avatarObj = AVATARS.find(a => a.id === p.avatarId);
+        const avatarObj = AVATARS.find(a => a.id === (p.avatarId || p.avatar_id));
         const emoji = avatarObj?.emoji || '🎮';
-        const readyCls = p.ready ? 'chip-ready' : 'chip-wait';
-        const readyTxt = p.ready ? '✔' : '…';
-        const crown = p.isCreator ? ' 👑' : '';
-        return `<div class="player-chip">${emoji} ${escHtml(p.playername)}${crown} <span class="${readyCls}">${readyTxt}</span></div>`;
+        const isReady = !!(p.ready || p.isReady || p.is_ready);
+        const readyCls = isReady ? 'chip-ready' : 'chip-wait';
+        const readyTxt = isReady ? '✔' : '…';
+        const crown = (p.isCreator || p.is_creator || p.isHost || p.is_host) ? ' 👑' : '';
+        return `<div class="player-chip">${emoji} ${escHtml(p.playername || p.username || 'Player')}${crown} <span class="${readyCls}">${readyTxt}</span></div>`;
       }).join('');
     }
 

@@ -483,6 +483,48 @@
             text-align: center;
         }
 
+        /* 4-button launcher row (PLAY / INVITE / CREATE / FIND) */
+        .game-btns.kg-btns-4 {
+            gap: 6px;
+        }
+
+        .game-btns.kg-btns-4 .kg-tip-wrap {
+            flex: 1 1 calc(25% - 6px);
+            min-width: 90px;
+        }
+
+        .game-btns.kg-btns-4 .btn-green,
+        .game-btns.kg-btns-4 .btn-solo {
+            width: 100%;
+            min-width: 0;
+            padding: 0.55rem 0.4rem;
+            font-size: 0.78rem;
+            letter-spacing: 0.04em;
+        }
+
+        .game-btns.kg-btns-4>.btn-solo {
+            flex: 1 1 calc(25% - 6px);
+            min-width: 90px;
+        }
+
+        @media (max-width: 640px) {
+
+            .game-btns.kg-btns-4 .kg-tip-wrap,
+            .game-btns.kg-btns-4>.btn-solo {
+                flex: 1 1 calc(50% - 6px);
+            }
+        }
+
+        /* Solo-only launcher row (Assemble) */
+        .game-btns.kg-btns-solo {
+            display: block;
+        }
+
+        .game-btns.kg-btns-solo .btn-solo {
+            display: inline-block;
+            min-width: 140px;
+        }
+
         /* Play-button tooltip */
         .kg-tip-wrap {
             position: relative;
@@ -2262,6 +2304,7 @@
     </style>
     <script src="/js/analytics.js"></script>
     <script src="/js/imgatlas.js?v=20260418" defer></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 
 <body data-mtheme="gold">
@@ -2461,15 +2504,20 @@
                         <div style="display:flex;gap:4px;flex-wrap:wrap;">
                             <button class="go"
                                 style="font-size:9px;padding:6px 8px;color:var(--neon-yellow);border-color:var(--neon-yellow);"
-                                onclick="goToGameSolo('/fasttrack/')">&#9654;
-                                SOLO</button>
+                                onclick="goToGameSolo('/fasttrack/')">&#9654; PLAY</button>
                             <span class="kg-tip-wrap">
-                                <button class="go kg-multi" onclick="goToGameHost('/fasttrack/')">📨 INVITE</button>
+                                <button class="go kg-multi" onclick="goToGameHost('/fasttrack/')">&#128232;
+                                    INVITE</button>
                                 <span class="kg-tip">Sign in to unlock</span>
                             </span>
-                            <span class="kg-tip-wrap" style="flex:1;">
-                                <button class="go kg-multi" onclick="goToGame('/fasttrack/')">&#9654;&#9654;
-                                    MULTI</button>
+                            <span class="kg-tip-wrap">
+                                <button class="go kg-multi" onclick="goToGameCreate('/fasttrack/')">&#10133;
+                                    CREATE</button>
+                                <span class="kg-tip">Sign in to unlock</span>
+                            </span>
+                            <span class="kg-tip-wrap">
+                                <button class="go kg-multi" onclick="goToGameFind('/fasttrack/')">&#128270;
+                                    FIND</button>
                                 <span class="kg-tip">Sign in to unlock</span>
                             </span>
                         </div>
@@ -2504,15 +2552,20 @@
                         <div style="display:flex;gap:4px;flex-wrap:wrap;">
                             <button class="go"
                                 style="font-size:9px;padding:6px 8px;color:var(--neon-yellow);border-color:var(--neon-yellow);"
-                                onclick="goToGameSolo('/brickbreaker3d/')">&#9654; SOLO</button>
+                                onclick="goToGameSolo('/brickbreaker3d/')">&#9654; PLAY</button>
                             <span class="kg-tip-wrap">
-                                <button class="go kg-multi" onclick="goToGameHost('/brickbreaker3d/')">📨
+                                <button class="go kg-multi" onclick="goToGameHost('/brickbreaker3d/')">&#128232;
                                     INVITE</button>
                                 <span class="kg-tip">Sign in to unlock</span>
                             </span>
-                            <span class="kg-tip-wrap" style="flex:1;">
-                                <button class="go kg-multi" onclick="goToGame('/brickbreaker3d/')">&#9654;&#9654;
-                                    MULTI</button>
+                            <span class="kg-tip-wrap">
+                                <button class="go kg-multi" onclick="goToGameCreate('/brickbreaker3d/')">&#10133;
+                                    CREATE</button>
+                                <span class="kg-tip">Sign in to unlock</span>
+                            </span>
+                            <span class="kg-tip-wrap">
+                                <button class="go kg-multi" onclick="goToGameFind('/brickbreaker3d/')">&#128270;
+                                    FIND</button>
                                 <span class="kg-tip">Sign in to unlock</span>
                             </span>
                         </div>
@@ -2547,14 +2600,20 @@
                         <div style="display:flex;gap:4px;flex-wrap:wrap;">
                             <button class="go"
                                 style="font-size:9px;padding:6px 8px;color:var(--neon-yellow);border-color:var(--neon-yellow);"
-                                onclick="goToGameSolo('/starfighter/')">&#9654; SOLO</button>
+                                onclick="goToGameSolo('/starfighter/')">&#9654; PLAY</button>
                             <span class="kg-tip-wrap">
-                                <button class="go kg-multi" onclick="goToGameHost('/starfighter/')">📨 INVITE</button>
+                                <button class="go kg-multi" onclick="goToGameHost('/starfighter/')">&#128232;
+                                    INVITE</button>
                                 <span class="kg-tip">Sign in to unlock</span>
                             </span>
-                            <span class="kg-tip-wrap" style="flex:1;">
-                                <button class="go kg-multi" onclick="goToGame('/starfighter/')">&#9654;&#9654;
-                                    MULTI</button>
+                            <span class="kg-tip-wrap">
+                                <button class="go kg-multi" onclick="goToGameCreate('/starfighter/')">&#10133;
+                                    CREATE</button>
+                                <span class="kg-tip">Sign in to unlock</span>
+                            </span>
+                            <span class="kg-tip-wrap">
+                                <button class="go kg-multi" onclick="goToGameFind('/starfighter/')">&#128270;
+                                    FIND</button>
                                 <span class="kg-tip">Sign in to unlock</span>
                             </span>
                         </div>
@@ -2606,16 +2665,21 @@
                                 right.
                                 Features 5-Card Draw variant for high-stakes rounds. Skill always wins.</div>
                         </div>
-                        <div class="game-btns">
-                            <button class="btn-solo" onclick="goToGameSolo('/fasttrack/')">&#9654; PLAY SOLO</button>
+                        <div class="game-btns kg-btns-4">
+                            <button class="btn-solo" onclick="goToGameSolo('/fasttrack/')">&#9654; PLAY</button>
                             <span class="kg-tip-wrap">
                                 <button class="btn-green kg-multi" onclick="goToGameHost('/fasttrack/')">&#128232;
                                     INVITE</button>
                                 <span class="kg-tip" id="tip-card-fasttrack">Sign in to unlock multiplayer</span>
                             </span>
-                            <span class="kg-tip-wrap" style="flex:1;">
-                                <button class="btn-green kg-multi" onclick="goToGame('/fasttrack/')">&#9654;&#9654;
-                                    MULTI</button>
+                            <span class="kg-tip-wrap">
+                                <button class="btn-green kg-multi" onclick="goToGameCreate('/fasttrack/')">&#10133;
+                                    CREATE</button>
+                                <span class="kg-tip">Sign in to unlock multiplayer</span>
+                            </span>
+                            <span class="kg-tip-wrap">
+                                <button class="btn-green kg-multi" onclick="goToGameFind('/fasttrack/')">&#128270;
+                                    FIND</button>
                                 <span class="kg-tip">Sign in to unlock multiplayer</span>
                             </span>
                         </div>
@@ -2647,18 +2711,21 @@
                                 way to the top of the galactic kill board.</div>
                         </div>
                         <div>
-                            <div class="game-btns">
-                                <button class="btn-solo" onclick="goToGameSolo('/starfighter/')">&#9654; PLAY
-                                    SOLO</button>
+                            <div class="game-btns kg-btns-4">
+                                <button class="btn-solo" onclick="goToGameSolo('/starfighter/')">&#9654; PLAY</button>
                                 <span class="kg-tip-wrap">
                                     <button class="btn-green kg-multi" onclick="goToGameHost('/starfighter/')">&#128232;
                                         INVITE</button>
                                     <span class="kg-tip" id="tip-card-starfighter">Sign in to unlock multiplayer</span>
                                 </span>
-                                <span class="kg-tip-wrap" style="flex:1;">
+                                <span class="kg-tip-wrap">
                                     <button class="btn-green kg-multi"
-                                        onclick="goToGame('/starfighter/')">&#9654;&#9654;
-                                        MULTI</button>
+                                        onclick="goToGameCreate('/starfighter/')">&#10133; CREATE</button>
+                                    <span class="kg-tip">Sign in to unlock multiplayer</span>
+                                </span>
+                                <span class="kg-tip-wrap">
+                                    <button class="btn-green kg-multi" onclick="goToGameFind('/starfighter/')">&#128270;
+                                        FIND</button>
                                     <span class="kg-tip">Sign in to unlock multiplayer</span>
                                 </span>
                             </div>
@@ -2705,17 +2772,21 @@
                                 depth &mdash; your ball curves through space. Power-ups warp physics. Global leaderboard
                                 tracks every point. Solo or head-to-head: who clears the board fastest?</div>
                         </div>
-                        <div class="game-btns">
-                            <button class="btn-solo" onclick="goToGameSolo('/brickbreaker3d/')">&#9654; PLAY
-                                SOLO</button>
+                        <div class="game-btns kg-btns-4">
+                            <button class="btn-solo" onclick="goToGameSolo('/brickbreaker3d/')">&#9654; PLAY</button>
                             <span class="kg-tip-wrap">
                                 <button class="btn-green kg-multi" onclick="goToGameHost('/brickbreaker3d/')">&#128232;
                                     INVITE</button>
                                 <span class="kg-tip" id="tip-card-brickbreaker">Sign in to unlock multiplayer</span>
                             </span>
-                            <span class="kg-tip-wrap" style="flex:1;">
-                                <button class="btn-green kg-multi" onclick="goToGame('/brickbreaker3d/')">&#9654;&#9654;
-                                    MULTI</button>
+                            <span class="kg-tip-wrap">
+                                <button class="btn-green kg-multi" onclick="goToGameCreate('/brickbreaker3d/')">&#10133;
+                                    CREATE</button>
+                                <span class="kg-tip">Sign in to unlock multiplayer</span>
+                            </span>
+                            <span class="kg-tip-wrap">
+                                <button class="btn-green kg-multi" onclick="goToGameFind('/brickbreaker3d/')">&#128270;
+                                    FIND</button>
                                 <span class="kg-tip">Sign in to unlock multiplayer</span>
                             </span>
                         </div>
@@ -2745,16 +2816,21 @@
                                 Play
                                 solo against the AI, pass-and-play locally, or challenge a friend online.</div>
                         </div>
-                        <div class="game-btns">
-                            <button class="btn-solo" onclick="goToGameSolo('/4dconnect/')">&#9654; PLAY SOLO</button>
+                        <div class="game-btns kg-btns-4">
+                            <button class="btn-solo" onclick="goToGameSolo('/4dconnect/')">&#9654; PLAY</button>
                             <span class="kg-tip-wrap">
                                 <button class="btn-green kg-multi" onclick="goToGameHost('/4dconnect/')">&#128232;
                                     INVITE</button>
                                 <span class="kg-tip" id="tip-card-4d">Sign in to unlock multiplayer</span>
                             </span>
-                            <span class="kg-tip-wrap" style="flex:1;">
-                                <button class="btn-green kg-multi" onclick="goToGame('/4dconnect/')">&#9654;&#9654;
-                                    MULTI</button>
+                            <span class="kg-tip-wrap">
+                                <button class="btn-green kg-multi" onclick="goToGameCreate('/4dconnect/')">&#10133;
+                                    CREATE</button>
+                                <span class="kg-tip">Sign in to unlock multiplayer</span>
+                            </span>
+                            <span class="kg-tip-wrap">
+                                <button class="btn-green kg-multi" onclick="goToGameFind('/4dconnect/')">&#128270;
+                                    FIND</button>
                                 <span class="kg-tip">Sign in to unlock multiplayer</span>
                             </span>
                         </div>
@@ -2793,18 +2869,11 @@
                                 structurally
                                 sound, it runs. If not, watch it fail spectacularly.</div>
                         </div>
-                        <div class="game-btns">
-                            <button class="btn-solo" onclick="goToGameSolo('/assemble/')">&#9654; PLAY SOLO</button>
-                            <span class="kg-tip-wrap">
-                                <button class="btn-green kg-multi" onclick="goToGameHost('/assemble/')">&#128232;
-                                    INVITE</button>
-                                <span class="kg-tip" id="tip-card-assemble-invite">Sign in to unlock multiplayer</span>
-                            </span>
-                            <span class="kg-tip-wrap" style="flex:1;">
-                                <button class="btn-green kg-multi" onclick="goToGame('/assemble/')">&#9654;&#9654;
-                                    MULTI</button>
-                                <span class="kg-tip" id="tip-card-assemble">Sign in to unlock multiplayer</span>
-                            </span>
+                        <div class="game-btns kg-btns-solo">
+                            <button class="btn-solo" onclick="goToGameSolo('/assemble/')">&#9654; PLAY</button>
+                            <div class="game-note"
+                                style="font-size:0.75rem;color:var(--text-muted,#888);margin-top:0.4rem;letter-spacing:0.05em;">
+                                Single-player only — no multiplayer modes for this game.</div>
                         </div>
                     </div>
                 </div>
@@ -2975,106 +3044,45 @@
                 <button class="modal-close" onclick="closeModal()">&#10005;</button>
                 <div class="modal-tabs">
                     <button class="modal-tab active" onclick="switchTab('login')">Sign In</button>
-                    <button class="modal-tab" onclick="switchTab('register')">Join Free</button>
-                    <button class="modal-tab" onclick="switchTab('forgot')">Forgot Password</button>
+                    <button class="modal-tab" id="legacy-tab-btn" onclick="switchTab('legacy')"
+                        style="display:none;">Legacy</button>
                 </div>
             </div><!-- /modal-header -->
             <div class="modal-body">
                 <div class="modal-panel active" id="panel-login">
-                    <h3>Sign In</h3>
-                    <div class="modal-sub">Welcome back, player. Your stats await.</div>
+                    <h3>Sign In to Play</h3>
+                    <div class="modal-sub">One click. No passwords. Your KensGames profile is created automatically.
+                    </div>
+                    <div id="g-signin-host" style="display:flex;justify-content:center;margin:24px 0;min-height:44px;">
+                    </div>
+                    <div id="g-signin-msg" class="form-msg" style="text-align:center;"></div>
+                    <div class="form-footer"
+                        style="margin-top:18px;font-size:11px;color:var(--text-muted);text-align:center;">
+                        By signing in you agree to the <a href="/tos/" target="_blank" rel="noopener">Terms of
+                            Service</a>.
+                    </div>
+                    <div class="form-footer" style="margin-top:6px;font-size:10px;text-align:center;">
+                        <a onclick="switchTab('legacy')"
+                            style="color:var(--text-muted);cursor:pointer;opacity:.5;">Legacy username/password
+                            &rarr;</a>
+                    </div>
+                </div>
+                <div class="modal-panel" id="panel-legacy">
+                    <h3>Legacy Sign In</h3>
+                    <div class="modal-sub">For accounts created before Google SSO. New users should use Google Sign-In
+                        instead.</div>
                     <form onsubmit="handleLogin(event)">
                         <div class="form-group"><label>Playername</label><input type="text" id="login-user"
                                 placeholder="YourPlayername" required autocomplete="username"></div>
                         <div class="form-group"><label>Password</label><input type="password" id="login-pass"
                                 placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;" required
                                 autocomplete="current-password"></div>
-                        <div style="text-align:right;margin-top:-4px;margin-bottom:12px">
-                            <a onclick="switchTab('forgot')"
-                                style="font-size:11px;color:var(--text-muted);cursor:pointer;">Forgot password?</a>
-                        </div>
                         <div class="cf-turnstile" id="login-turnstile" data-sitekey="0x4AAAAAAC_uN7CPKfVyy0fj"
                             data-theme="dark" style="margin-bottom:8px;"></div>
                         <button type="submit" class="form-submit">&#9654; SIGN IN</button>
                         <div class="form-msg" id="login-msg"></div>
                     </form>
-                    <div class="form-footer">No account? <a onclick="switchTab('register')">Join free</a></div>
-                </div>
-                <div class="modal-panel" id="panel-register">
-                    <h3>Join Free</h3>
-                    <div class="modal-sub">Create your player profile. Zero cost, forever.</div>
-                    <form onsubmit="handleRegister(event)" id="modal-reg-form">
-                        <div class="form-group"><label>Playername</label><input type="text" id="reg-username"
-                                placeholder="ArcadeHero99" required minlength="3" maxlength="20" autocomplete="username"
-                                oninput="checkUsername(this.value)">
-                            <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">3–20 chars &middot;
-                                letters,
-                                numbers, underscore &middot; visible to all players</div>
-                            <div id="reg-username-err" style="font-size:11px;min-height:14px;margin-top:2px;"></div>
-                        </div>
-                        <div class="form-group"><label>Email</label><input type="email" id="reg-email"
-                                placeholder="you@email.com" required autocomplete="email"
-                                oninput="checkEmail(this.value)">
-                            <div id="reg-email-err" style="font-size:11px;min-height:14px;margin-top:2px;"></div>
-                        </div>
-                        <div class="form-group"><label>Password</label><input type="password" id="reg-pass"
-                                placeholder="Min 8 chars, A–Z, 0–9, !#$_" required minlength="8"
-                                autocomplete="new-password" oninput="checkModalPW(this.value)">
-                            <div id="modal-pw-rules" style="font-size:11px;line-height:1.8;margin-top:4px;">
-                                <span id="mpr-len" style="display:block;color:var(--text-muted);">&#9632; At least 8
-                                    characters</span>
-                                <span id="mpr-cap" style="display:block;color:var(--text-muted);">&#9632; At least 1
-                                    uppercase letter (A–Z)</span>
-                                <span id="mpr-dig" style="display:block;color:var(--text-muted);">&#9632; At least 1
-                                    digit
-                                    (0–9)</span>
-                                <span id="mpr-spc" style="display:block;color:var(--text-muted);">&#9632; At least 1
-                                    special
-                                    char (!&nbsp;&nbsp;#&nbsp;&nbsp;$&nbsp;&nbsp;_)</span>
-                            </div>
-                        </div>
-                        <div class="form-group"><label>Confirm Password</label><input type="password" id="reg-pass2"
-                                placeholder="Repeat password" required minlength="8" autocomplete="new-password"
-                                oninput="checkPassMatch()">
-                            <div id="reg-pass2-err" style="font-size:11px;min-height:14px;margin-top:2px;"></div>
-                        </div>
-                        <div class="form-group">
-                            <label>Choose Your Avatar</label>
-                            <div id="modal-av-tabs" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">
-                            </div>
-                            <div id="modal-av-grid"
-                                style="display:grid;grid-template-columns:repeat(8,1fr);gap:3px;max-height:140px;overflow-y:auto;margin-bottom:4px;">
-                            </div>
-                            <div id="modal-av-hint" style="font-size:11px;color:var(--text-muted);">Pick an avatar to
-                                represent you in every game</div>
-                        </div>
-                        <div class="cf-turnstile" data-sitekey="0x4AAAAAAC_uN7CPKfVyy0fj" data-theme="dark"
-                            style="margin-bottom:6px;"></div>
-                        <div class="modal-tos-row">
-                            <input type="checkbox" id="modal-tos">
-                            <label for="modal-tos">I agree to the <a href="/tos/" target="_blank"
-                                    rel="noopener">KensGames Terms of Service</a>. By checking this box I confirm I am
-                                at least 13 years old and accept all terms and conditions.</label>
-                        </div>
-                        <button type="submit" class="form-submit"
-                            style="background:var(--neon-pink);box-shadow:var(--glow-pink)">&#9654; CREATE
-                            ACCOUNT</button>
-                        <div class="form-msg" id="reg-msg"></div>
-                    </form>
-                    <div class="form-footer">Already have an account? <a onclick="switchTab('login')">Sign in</a></div>
-                </div>
-                <div class="modal-panel" id="panel-forgot">
-                    <h3>Reset Password</h3>
-                    <div class="modal-sub">Enter your email and we will send a reset link.</div>
-                    <form onsubmit="handleForgot(event)">
-                        <div class="form-group"><label>Email Address</label><input type="email" id="forgot-email"
-                                placeholder="you@email.com" required></div>
-                        <button type="submit" class="form-submit"
-                            style="background:var(--neon-purple);border-color:var(--neon-purple);box-shadow:var(--glow-pink)">&#9654;
-                            SEND RESET LINK</button>
-                        <div class="form-msg" id="forgot-msg"></div>
-                    </form>
-                    <div class="form-footer"><a onclick="switchTab('login')">&#8592; Back to Sign In</a></div>
+                    <div class="form-footer"><a onclick="switchTab('login')">&#8592; Back to Google Sign-In</a></div>
                 </div>
             </div><!-- /modal-body -->
         </div>
@@ -4127,8 +4135,8 @@
     <script src="/js/manifold.js?v=7"></script>
     <script src="/js/manifold_reality.js" defer></script>
     <script src="/js/manifold_panels.js" defer></script>
-    <script src="/js/substrates/avatar_picker.js"></script>
-    <script src="/js/substrates/player_profile.js"></script>
+    <script src="/js/substrates/avatar_picker.js?v=20260424"></script>
+    <script src="/js/substrates/player_profile.js?v=20260424"></script>
     <script>
         // Floating 80s arcade symbols
         const SYMBOLS = ['\u25b2', '\u25c6', '\u25a0', '\u25cf', '\u25b6', '\u25c0', '\u2605', '\u25c8', '\u2b21', '\u25bc', '\u25c9', '\u2b22'];
@@ -4148,6 +4156,10 @@
         function openModal(tab) {
             document.getElementById('auth-modal').classList.add('open');
             switchTab(tab || 'login');
+            // Lazily render the Google sign-in button when the modal opens.
+            if (window.KGGoogleAuth && typeof window.KGGoogleAuth.render === 'function') {
+                window.KGGoogleAuth.render();
+            }
         }
         function closeModal() {
             document.getElementById('auth-modal').classList.remove('open');
@@ -4156,11 +4168,21 @@
             if (e.target === e.currentTarget) closeModal();
         });
         function switchTab(tab) {
-            const tabs = ['login', 'register', 'forgot'];
-            document.querySelectorAll('.modal-tab').forEach((t, i) => t.classList.toggle('active', tabs[i] === tab));
+            // Two panels now: 'login' (Google SSO) and 'legacy' (username/password fallback).
+            const validTabs = ['login', 'legacy'];
+            const t = validTabs.includes(tab) ? tab : 'login';
+            document.querySelectorAll('.modal-tab').forEach(btn => {
+                const isActive = btn.getAttribute('onclick') && btn.getAttribute('onclick').includes("'" + t + "'");
+                btn.classList.toggle('active', isActive);
+            });
             document.querySelectorAll('.modal-panel').forEach(p => p.classList.remove('active'));
-            document.getElementById('panel-' + tab).classList.add('active');
-            if (tab === 'register') buildModalAvGrid(modalAvCat);
+            const panel = document.getElementById('panel-' + t);
+            if (panel) panel.classList.add('active');
+            // Reveal the Legacy tab once user has navigated there at least once.
+            if (t === 'legacy') {
+                const lt = document.getElementById('legacy-tab-btn');
+                if (lt) lt.style.display = '';
+            }
         }
 
         // ── Inline field validation helpers ─────────────────────────────────
@@ -4399,25 +4421,37 @@
             '/4dconnect/': '/play/?game=4dconnect&mode=solo',
             '/assemble/': '/play/?game=assemble&mode=solo',
         };
-        function goToGame(path) {
-            if (!localStorage.getItem('kg_token')) { openModal('auth-modal'); return; }
-            const gameId = PATH_TO_GAME[path] || path.replace(/\//g, '');
-            window.location.href = `/play/?game=${gameId}&mode=multi`;
+        // Unified launcher modes (4-button row per game panel):
+        //   PLAY   → mode=solo     (single player vs AI bots)
+        //   INVITE → mode=host     (private room with shareable code/link)
+        //   CREATE → mode=public   (open lobby visible to signed-in players)
+        //   FIND   → mode=matchmake(matchmaker queue, AI fallback)
+        function _gid(path) {
+            return PATH_TO_GAME[path] || path.replace(/\//g, '');
         }
-        function goToGameHost(path) {
-            if (!localStorage.getItem('kg_token')) { openModal('auth-modal'); return; }
-            const gameId = PATH_TO_GAME[path] || path.replace(/\//g, '');
-            window.location.href = `/play/?game=${gameId}&mode=host`;
+        function _requireAuth() {
+            if (!localStorage.getItem('kg_token')) { openModal('auth-modal'); return false; }
+            return true;
         }
         function goToGameSolo(path) {
             const soloUrl = SOLO_ROUTES[path];
-            if (soloUrl) {
-                window.location.href = soloUrl;
-                return;
-            }
-            const gameId = PATH_TO_GAME[path] || path.replace(/\//g, '');
-            window.location.href = `/play/?game=${gameId}&mode=solo`;
+            if (soloUrl) { window.location.href = soloUrl; return; }
+            window.location.href = `/play/?game=${_gid(path)}&mode=solo`;
         }
+        function goToGameHost(path) {
+            if (!_requireAuth()) return;
+            window.location.href = `/play/?game=${_gid(path)}&mode=host`;
+        }
+        function goToGameCreate(path) {
+            if (!_requireAuth()) return;
+            window.location.href = `/play/?game=${_gid(path)}&mode=public`;
+        }
+        function goToGameFind(path) {
+            if (!_requireAuth()) return;
+            window.location.href = `/play/?game=${_gid(path)}&mode=matchmake`;
+        }
+        // Back-compat alias: old MULTI button = CREATE (open lobby)
+        function goToGame(path) { return goToGameCreate(path); }
         document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
         const urlParam = new URLSearchParams(location.search).get('modal');
         if (urlParam) openModal(urlParam);
@@ -4499,27 +4533,37 @@
                     else { btn.classList.add('kg-locked'); }
                 });
             }
-            // Also fix goToGame to work after CF-Access bridge sets kg_token
+            // Re-bind launcher functions after CF-Access bridge sets kg_token.
+            // Mirrors the 4-mode layout above (solo / host / public / matchmake).
             function patchGoToGame() {
-                window.goToGame = function (path) {
-                    if (!localStorage.getItem('kg_token')) { if (typeof openModal === 'function') openModal('auth-modal'); return; }
-                    const gameId = (window.PATH_TO_GAME && window.PATH_TO_GAME[path]) || path.replace(/\//g, '');
-                    window.location.href = `/play/?game=${gameId}&mode=multi`;
-                };
-                window.goToGameHost = function (path) {
-                    if (!localStorage.getItem('kg_token')) { if (typeof openModal === 'function') openModal('auth-modal'); return; }
-                    const gameId = (window.PATH_TO_GAME && window.PATH_TO_GAME[path]) || path.replace(/\//g, '');
-                    window.location.href = `/play/?game=${gameId}&mode=host`;
-                };
+                function _gid(path) {
+                    return (window.PATH_TO_GAME && window.PATH_TO_GAME[path]) || path.replace(/\//g, '');
+                }
+                function _gate() {
+                    if (!localStorage.getItem('kg_token')) {
+                        if (typeof openModal === 'function') openModal('auth-modal');
+                        return false;
+                    }
+                    return true;
+                }
                 window.goToGameSolo = function (path) {
                     const soloUrl = (window.SOLO_ROUTES && window.SOLO_ROUTES[path]) || null;
-                    if (soloUrl) {
-                        window.location.href = soloUrl;
-                        return;
-                    }
-                    const gameId = (window.PATH_TO_GAME && window.PATH_TO_GAME[path]) || path.replace(/\//g, '');
-                    window.location.href = `/play/?game=${gameId}&mode=solo`;
+                    if (soloUrl) { window.location.href = soloUrl; return; }
+                    window.location.href = `/play/?game=${_gid(path)}&mode=solo`;
                 };
+                window.goToGameHost = function (path) {
+                    if (!_gate()) return;
+                    window.location.href = `/play/?game=${_gid(path)}&mode=host`;
+                };
+                window.goToGameCreate = function (path) {
+                    if (!_gate()) return;
+                    window.location.href = `/play/?game=${_gid(path)}&mode=public`;
+                };
+                window.goToGameFind = function (path) {
+                    if (!_gate()) return;
+                    window.location.href = `/play/?game=${_gid(path)}&mode=matchmake`;
+                };
+                window.goToGame = function (path) { return window.goToGameCreate(path); };
             }
             async function initKGNav() {
                 var user = getKgUser();
@@ -4546,6 +4590,125 @@
             };
             if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', initKGNav); }
             else { initKGNav(); }
+        })();
+    </script>
+
+    <script>
+        // ── Google Sign-In (GIS) bridge ──────────────────────────────────────
+        // Renders the official Google "Sign in with Google" button into the
+        // auth modal. On success, exchanges the Google ID token for a
+        // KensGames JWT via POST /api/auth/google and stores it in kg_token.
+        (function () {
+            let _clientId = null;
+            let _rendered = false;
+            let _initPromise = null;
+
+            function setMsg(text, ok) {
+                const el = document.getElementById('g-signin-msg');
+                if (!el) return;
+                el.textContent = text || '';
+                el.className = 'form-msg' + (ok === true ? ' ok' : ok === false ? ' err' : '');
+            }
+
+            async function fetchClientId() {
+                if (_clientId !== null) return _clientId;
+                try {
+                    const r = await fetch('/api/config/public');
+                    const d = await r.json();
+                    _clientId = d.googleClientId || '';
+                } catch { _clientId = ''; }
+                return _clientId;
+            }
+
+            function whenGsiReady() {
+                return new Promise((resolve) => {
+                    const tick = () => {
+                        if (window.google && window.google.accounts && window.google.accounts.id) return resolve();
+                        setTimeout(tick, 60);
+                    };
+                    tick();
+                });
+            }
+
+            async function handleCredentialResponse(resp) {
+                setMsg('Signing you in…');
+                try {
+                    const r = await fetch('/api/auth/google', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ credential: resp.credential })
+                    });
+                    const data = await r.json();
+                    if (!r.ok || !data.success || !data.token) {
+                        const detail = data.detail || data.tokenAud ? ' (tokenAud=' + data.tokenAud + ' expected=' + data.expectedAud + ')' : (data.detail ? ' — ' + data.detail : '');
+                        setMsg((data.error || 'Sign-in failed') + detail, false);
+                        console.warn('[KGGoogleAuth] /api/auth/google failed', r.status, data);
+                        return;
+                    }
+                    localStorage.setItem('kg_token', data.token);
+                    if (data.userId) localStorage.setItem('kg_user_id', String(data.userId));
+                    if (data.username) localStorage.setItem('kg_username', data.username);
+                    if (data.username) localStorage.setItem('username', data.username);
+                    if (data.displayName) localStorage.setItem('kg_display_name', data.displayName);
+                    if (data.displayName) localStorage.setItem('display_name', data.displayName);
+                    if (data.avatar) localStorage.setItem('kg_avatar', JSON.stringify({ emoji: data.avatar }));
+
+                    // First-time Google users haven't picked a playername / avatar yet —
+                    // send them through /player/setup.html before returning to the landing page.
+                    if (!data.profileSetup) {
+                        setMsg('Welcome! Setting up your profile…', true);
+                        setTimeout(() => {
+                            if (typeof closeModal === 'function') closeModal();
+                            const here = location.pathname + location.search;
+                            window.location.href = '/player/setup.html?redirect=' + encodeURIComponent(here);
+                        }, 400);
+                        return;
+                    }
+
+                    setMsg('Signed in! Loading…', true);
+                    setTimeout(() => {
+                        if (typeof closeModal === 'function') closeModal();
+                        if (window.KGNav && window.KGNav.refresh) window.KGNav.refresh();
+                    }, 500);
+                } catch (e) {
+                    setMsg('Network error: ' + e.message, false);
+                }
+            }
+
+            async function init() {
+                if (_initPromise) return _initPromise;
+                _initPromise = (async () => {
+                    const id = await fetchClientId();
+                    if (!id) { setMsg('Google sign-in unavailable (no client ID configured).', false); return false; }
+                    await whenGsiReady();
+                    google.accounts.id.initialize({
+                        client_id: id,
+                        callback: handleCredentialResponse,
+                        auto_select: false,
+                        cancel_on_tap_outside: true,
+                    });
+                    return true;
+                })();
+                return _initPromise;
+            }
+
+            async function render() {
+                const host = document.getElementById('g-signin-host');
+                if (!host || _rendered) return;
+                const ok = await init();
+                if (!ok) return;
+                google.accounts.id.renderButton(host, {
+                    theme: 'filled_black',
+                    size: 'large',
+                    type: 'standard',
+                    text: 'signin_with',
+                    shape: 'pill',
+                    logo_alignment: 'left',
+                });
+                _rendered = true;
+            }
+
+            window.KGGoogleAuth = { render, init };
         })();
     </script>
 

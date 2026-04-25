@@ -254,7 +254,7 @@ app.get('/api/auth/access-session', (req, res) => {
 // ═══════════════════════════════════════════════════════════════════════════
 function verifyGoogleIdToken(credential) {
   return new Promise((resolve, reject) => {
-    const path = `/oauth2/v3/tokeninfo?id_token=${encodeURIComponent(credential)}`;
+    const path = `/tokeninfo?id_token=${encodeURIComponent(credential)}`;
     https.get({ hostname: 'oauth2.googleapis.com', path, headers: { 'Accept': 'application/json' } }, (res) => {
       let data = '';
       res.on('data', c => data += c);
@@ -281,7 +281,8 @@ app.post('/api/auth/google', async (req, res) => {
     // Verify with Google
     const result = await verifyGoogleIdToken(credential);
     if (!result.ok) {
-      return res.status(401).json({ success: false, error: 'Invalid Google token' });
+      console.warn('[google-auth] tokeninfo failed:', result.status, JSON.stringify(result.payload).slice(0, 300));
+      return res.status(401).json({ success: false, error: 'Invalid Google token', status: result.status, detail: result.payload && result.payload.error_description || result.payload && result.payload.error || null });
     }
 
     const info = result.payload;
@@ -289,7 +290,8 @@ app.post('/api/auth/google', async (req, res) => {
     // Validate audience
     const expectedAud = process.env.GOOGLE_CLIENT_ID;
     if (expectedAud && info.aud !== expectedAud) {
-      return res.status(401).json({ success: false, error: 'Token audience mismatch' });
+      console.warn('[google-auth] aud mismatch: token.aud=', info.aud, 'expected=', expectedAud);
+      return res.status(401).json({ success: false, error: 'Token audience mismatch', tokenAud: info.aud, expectedAud });
     }
 
     const email = (info.email || '').trim().toLowerCase();
@@ -970,6 +972,14 @@ app.post('/api/auth/verify-email', async (req, res) => {
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: Date.now() });
+});
+
+// Public client config — exposes only values safe for the browser.
+app.get('/api/config/public', (req, res) => {
+  res.json({
+    googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+    authMode: 'google-sso'
+  });
 });
 
 // ─── Directive 2.6 — Privacy analytics ingest ────────────────────────────────

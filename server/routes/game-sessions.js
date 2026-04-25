@@ -279,6 +279,37 @@ async function resolveSessionsForListing() {
   return Object.values(sessionsData);
 }
 
+/**
+ * Find a session by invite code, falling back to TetracubeDB shadow/remote
+ * when the in-memory copy is missing (e.g. after an auth-server restart).
+ * Rehydrates `sessionsData` so subsequent reads/writes hit the same object.
+ */
+async function resolveSessionByCode(rawCode) {
+  if (!rawCode) return null;
+  const code = String(rawCode).toUpperCase();
+
+  // 1. In-memory (fast path)
+  let session = Object.values(sessionsData).find((s) => s.code === code);
+  console.log(`[sessions] join lookup code=${code} memCount=${Object.keys(sessionsData).length} hit=${!!session}`);
+  if (session) return session;
+
+  // 2. TetracubeDB shadow (survives auth-server restarts as long as the
+  //    tetracube client has loaded its shadow snapshot).
+  if (TetracubeClient.isEnabled()) {
+    const shadows = TetracubeClient.listShadowByTable('sessions') || [];
+    for (const envelope of shadows) {
+      const candidate = normalizeSession(envelope && envelope.value, envelope && envelope.row);
+      if (candidate && candidate.code === code) {
+        // Rehydrate so future joins, reads, and the lobby see the same session.
+        sessionsData[candidate.sessionId] = candidate;
+        return candidate;
+      }
+    }
+  }
+
+  return null;
+}
+
 // ── routes ───────────────────────────────────────────────────────────────────
 
 /**
@@ -347,7 +378,8 @@ router.post('/create', async (req, res) => {
     return strictUnavailable(res, writeStatus && (writeStatus.reason || writeStatus.error || 'write_failed'));
   }
 
-  const inviteUrl = `${process.env.BASE_URL || 'https://kensgames.com'}/invite/?code=${code}&game=${gameId}`;
+  const inviteUrl = `${process.env.BASE_URL || 'https://kensgames.com'}/play/?game=${encodeURIComponent(gameId)}&code=${encodeURIComponent(code)}`;
+  console.log(`[sessions] CREATED code=${code} sessionId=${sessionId} game=${gameId} mode=${mode} by=${userId}`);
   return res.json({ success: true, sessionId, code, inviteUrl, session: publicSession(sessionsData[sessionId], userId, false) });
 });
 
@@ -468,7 +500,7 @@ router.post('/join', async (req, res) => {
 
   if (!code) return res.status(400).json({ success: false, error: 'Invite code required' });
 
-  const session = Object.values(sessionsData).find(s => s.code === code.toUpperCase());
+  const session = await resolveSessionByCode(code);
   if (!session) return res.status(404).json({ success: false, error: 'Invalid or expired invite code' });
   if (session.status !== 'waiting') return res.status(409).json({ success: false, error: 'Game already started' });
   if (session.players.length >= session.maxPlayers) return res.status(409).json({ success: false, error: 'Game is full' });

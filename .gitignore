@@ -20,6 +20,9 @@ Thumbs.db
 server/kensgames.db
 server/*.db
 
+# Runtime session/lobby state — VPS only, never committed
+server/data/
+
 # Editor
 .idea/
 .vscode/settings.json

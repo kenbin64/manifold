@@ -1129,12 +1129,53 @@ const Starfighter = (function () {
         state.launchTimer = 0;
         state.arenaRadius = dim('arena.radius');
 
-        // Parse URL params: ?ai=0 disables AI wingmen, ?mode=multi/private activates MP
+        // Parse URL params from /play/ launcher (single source of truth).
+        //   mode      : solo | host | private | public | multi   (host == private invite, public == matchmake-eligible)
+        //   code      : invite code for private games
+        //   session   : tetracubedb session_id (if /play/ created one)
+        //   wsUrl     : multiplayer WebSocket URL
+        //   name      : player callsign
+        //   avatar    : emoji
+        //   launch=1, autostart=1, offline=true : auto-start signals (skip any pre-game UI)
+        //   ai        : '0' to disable AI wingmen (legacy); also accepts ai_players (count) and ai_level
+        //   ai_players: number of AI wingmen (0..3)
+        //   ai_level  : easy | medium | hard
+        //   difficulty: alias of ai_level
+        //   music, sfx: '0' disables, anything else enables
         const params = new URLSearchParams(window.location.search);
-        state.aiWingmen = params.get('ai') !== '0';
-        state.gameMode = params.get('mode') || 'solo';     // solo | multi | private
-        state.roomCode = params.get('code') || null;        // invite code for private games
+        const aiPlayersRaw = params.get('ai_players');
+        const aiLegacy = params.get('ai');
+        if (aiPlayersRaw !== null) {
+            const n = parseInt(aiPlayersRaw, 10);
+            state.aiWingmen = isFinite(n) ? n > 0 : true;
+            state.aiWingmenCount = isFinite(n) ? Math.max(0, Math.min(3, n)) : 1;
+        } else {
+            state.aiWingmen = aiLegacy !== '0';
+            state.aiWingmenCount = state.aiWingmen ? 1 : 0;
+        }
+        state.aiLevel = params.get('ai_level') || params.get('difficulty') || 'medium';
+        const rawMode = params.get('mode') || 'solo';
+        // /play/ uses (solo|host|private|public|matchmake|multi); core.js semantics: solo|private|multi
+        if (rawMode === 'host' || rawMode === 'private') {
+            state.gameMode = 'private';
+        } else if (rawMode === 'public' || rawMode === 'matchmake' || rawMode === 'multi') {
+            state.gameMode = 'multi';
+        } else {
+            state.gameMode = 'solo';
+        }
+        state.roomCode = params.get('code') || null;
+        state.sessionId = params.get('session') || null;
+        state.wsUrl = params.get('wsUrl') || null;
+        state.callsignOverride = params.get('name') || null;
+        state.avatarOverride = params.get('avatar') || null;
+        // offline=true forces solo regardless of mode (FastTrack-style override)
+        if (params.get('offline') === 'true') state.gameMode = 'solo';
         state.isMultiplayer = state.gameMode !== 'solo';
+        state.musicEnabled = params.get('music') !== '0';
+        state.sfxEnabled = params.get('sfx') !== '0';
+        // launch/autostart are advisory: core already auto-boots after preload, but we
+        // record them so any embedded "press start" UI in legacy bundles can self-skip.
+        state.autoLaunch = params.get('launch') === '1' || params.get('autostart') === '1' || state.gameMode === 'solo';
 
         // Connect to multiplayer server if multiplayer mode
         if (state.isMultiplayer && window.SFMultiplayer) {

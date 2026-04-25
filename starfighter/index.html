@@ -854,9 +854,10 @@
     <p class="hero-tagline">Defend the manifold across relentless enemy waves. Fly solo or form a squadron with up to 3
       friends.</p>
     <div class="hero-ctas" id="hero-ctas">
-      <a href="/play/?game=starfighter&mode=solo" class="cta-primary" id="solo-btn">🎮 SOLO</a>
-      <a href="/play/?game=starfighter&mode=host" class="cta-secondary" id="coop-btn">📨 INVITE</a>
-      <a href="/play/?game=starfighter&mode=multi" class="cta-secondary">👥 MULTI</a>
+      <a href="/play/?game=starfighter&mode=solo" class="cta-primary" id="solo-btn">▶ PLAY</a>
+      <a href="/play/?game=starfighter&mode=host" class="cta-secondary" id="invite-btn">📨 INVITE</a>
+      <a href="/play/?game=starfighter&mode=public" class="cta-secondary" id="create-btn">➕ CREATE</a>
+      <a href="/play/?game=starfighter&mode=matchmake" class="cta-secondary" id="find-btn">🔍 FIND</a>
     </div>
   </div>
   <section>
@@ -895,15 +896,38 @@
         <div class="feat-desc">Compete for the highest wave survived. Top pilots earn Starfighter medallions.</div>
       </div>
     </div>
-    <div class="hud-row">
-      <span class="hud-label">FA</span>
-      <span id="ghud-fa" class="hud-val" style="color:#00ff88">ON</span>
+
+    <!-- ── Game overlay layer ── injected so /starfighter/?mode=… can boot ── -->
+    <canvas id="game-canvas"
+      style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:1"></canvas>
+    <div id="crosshair">
+      <div class="ring"></div>
+      <div class="dot"></div>
+      <div class="h-line"></div>
+      <div class="v-line"></div>
+      <div class="bracket tl"></div>
+      <div class="bracket tr"></div>
+      <div class="bracket bl"></div>
+      <div class="bracket br"></div>
     </div>
-    <div class="hud-row">
-      <span class="hud-label">MODE</span>
-      <span id="ghud-speed-mode" class="hud-val">CRUISE</span>
+    <div id="gameplay-hud"
+      style="display:none;position:fixed;bottom:24px;right:24px;z-index:25;background:rgba(0,15,25,0.85);border:1px solid rgba(0,255,255,0.3);border-radius:6px;padding:10px 14px;font-family:'Courier New',monospace;min-width:200px">
+      <div class="hud-row">
+        <span class="hud-label">FA</span>
+        <span id="ghud-fa" class="hud-val" style="color:#00ff88">ON</span>
+      </div>
+      <div class="hud-row">
+        <span class="hud-label">MODE</span>
+        <span id="ghud-speed-mode" class="hud-val">CRUISE</span>
+      </div>
     </div>
+    <div id="ship-panel"
+      style="display:none;position:fixed;top:24px;left:24px;z-index:25;background:rgba(0,15,25,0.85);border:1px solid rgba(0,255,255,0.3);border-radius:6px;padding:10px 14px;font-family:'Courier New',monospace;color:#0ff;font-size:12px;min-width:200px">
     </div>
+    <div id="kill-feed"
+      style="display:none;position:fixed;top:80px;right:24px;z-index:30;width:280px;font-family:'Courier New',monospace;font-size:12px;color:#0ff;pointer-events:none">
+    </div>
+    <div id="comm-messages" style="display:none"></div>
 
     <!-- â•â•â• RADAR OVERLAY â€” bottom-left â•â•â• -->
     <div id="radar-overlay">
@@ -1034,12 +1058,10 @@
   <section>
     <div class="section-title">JOIN A PRIVATE GAME</div>
     <div class="invite-box">
-      <input class="invite-input" type="text" id="invite-code-input" placeholder="XXXXXX" maxlength="6"
-        style="text-transform:uppercase">
-      <button class="cta-primary"
-        onclick="KG_LANDING.openInviteJoin(document.getElementById('invite-code-input').value)">JOIN</button>
+      <a href="/play/?game=starfighter" class="cta-primary">JOIN BY CODE</a>
       <span style="font-size:0.78rem;color:var(--dim);flex-basis:100%;margin-top:0.5rem">Got an invite code from your
-        squadron? Paste it above ï¿½ no account needed to join.</span>
+        squadron? Click JOIN — the lobby will ask for your code, playername, avatar and TOS. No account needed to
+        join.</span>
     </div>
   </section>
   <section>
@@ -1148,7 +1170,7 @@
     <div id="fs-resume" onclick="SFInput.enterImmersive()">&#9654; CLICK TO RESUME</div>
 
     <div id="loading-screen"
-      style="position:absolute;top:0;left:0;width:100%;height:100%;background:#000;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:9999">
+      style="position:absolute;top:0;left:0;width:100%;height:100%;background:#000;display:none;flex-direction:column;justify-content:center;align-items:center;z-index:9999">
       <picture>
         <source srcset="/assets/masterImageFile/starfighterlogo.webp" type="image/webp">
         <img src="/assets/masterImageFile/starfighterlogo.png" alt="STARFIGHTER"
@@ -1326,16 +1348,30 @@
     <!-- Three.js -->
     <!-- Manifold Substrates (Dimensional Programming) -->
     <script src="/js/substrates/game_session_substrate.js"></script>
-    <script src="/js/game_landing.js"></script>
     <!-- Game Logic -->
     <script>
-      KG_LANDING.init('starfighter', '/play/?game=starfighter');
-      document.getElementById('invite-code-input').addEventListener('input', function () { this.value = this.value.toUpperCase().replace(/[^A-F0-9]/g, ''); });
+      // Embedded launcher (KG_LANDING) removed — /play/ is the single source of truth.
+      // Hero CTA links above point straight at /play/?game=starfighter&mode=...
+      // and the lobby handles auth, invite codes, playername+avatar+TOS, and matchmaking.
       if (localStorage.getItem('kg_token')) {
         var sb = document.getElementById('signin-btn');
-        sb.textContent = 'LOBBY';
-        sb.href = '/play/?game=starfighter';
+        if (sb) {
+          sb.textContent = 'LOBBY';
+          sb.href = '/play/?game=starfighter';
+        }
       }
+      // Boot the game once DOM and bundle are both parsed — only when launched via /play/
+      // (a `mode`, `code`, or `session` query param is the launch signal).
+      window.addEventListener('DOMContentLoaded', function () {
+        var qp = new URLSearchParams(window.location.search);
+        var isPlay = qp.has('mode') || qp.has('code') || qp.has('session');
+        if (!isPlay) return;
+        var canvas = document.getElementById('game-canvas');
+        if (canvas) canvas.style.display = 'block';
+        var loading = document.getElementById('loading-screen');
+        if (loading) loading.style.display = 'flex';
+        if (window.Starfighter && typeof Starfighter.init === 'function') Starfighter.init();
+      });
     </script>
     <script src="starfighter.bundle.js?v=c78c2709d9249fa7"></script>
 </body>

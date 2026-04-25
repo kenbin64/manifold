@@ -7,21 +7,11 @@
 
 Site: kensgames.com
 Origin: VPS at 172.81.62.217 (proxied via Cloudflare)
-Auth: **Google SSO is the primary login.** The browser obtains a Google ID
-token via Google Identity Services (GIS), POSTs it to `/api/auth/google`, and
-the Node.js auth server (port 3000) returns a `kg_token` JWT stored in
-`localStorage`. There is no in-house registration UI and no email-verification
-flow on the landing page.
+Auth: JWT-based (`kg_token` in localStorage), managed by Node.js server on port 3000.
 
-Cloudflare Access is used ONLY to hard-gate `/admin*`. All other login
-enforcement is handled by the app's own profile_gate.js substrate using the
-`kg_token` minted from the Google ID token.
-
-A legacy username/password sign-in panel exists in the modal (hidden by
-default, reachable via a small "Legacy username/password" link) so that
-pre-SSO accounts (e.g. `Ken`, `kbingh`) can still sign in via
-`/api/auth/login`. New account creation through that path is no longer
-exposed in the UI.
+**Auth model:** The application manages its own login. Cloudflare Access is used ONLY to
+hard-gate `/admin*`. All other login enforcement is handled by the app's own profile_gate.js
+substrate — Cloudflare simply proxies those pages without any Access policy.
 
 ---
 
@@ -45,7 +35,7 @@ exposed in the UI.
 | `/fasttrack/index.html` | ✅ Public | Everyone (landing/splash) | — |
 | `/brickbreaker3d/index.html` | ✅ Public | Everyone (landing/splash) | — |
 | `/starfighter/index.html` | ✅ Public | Everyone (landing/splash) | — |
-| `/4dconnect/index.html` | ✅ Public | Everyone (landing/splash) | — |
+| `/4DTicTacToe/index.html` | ✅ Public | Everyone (landing/splash) | — |
 | `/assemble/index.html` | ✅ Public | Everyone (landing/splash) | — |
 | `/fasttrack/assets/*` | ✅ Public | Everyone | — |
 | `/starfighter/assets/*` | ✅ Public | Everyone | — |
@@ -56,8 +46,8 @@ exposed in the UI.
 | `/brickbreaker3d/lobby.html` | 🔒 Login required | Must have `kg_token` + profileSetup | profile_gate.js |
 | `/brickbreaker3d/game.html` | 🔒 Login or guest | `kg_token` OR `kg_guest_token` (invite) | profile_gate.js |
 | `/starfighter/lobby.html` | 🔒 Login required | Must have `kg_token` + profileSetup | profile_gate.js |
-| `/4dconnect/lobby.html` | 🔒 Login required | Must have `kg_token` + profileSetup | profile_gate.js |
-| `/4dconnect/game.html` | 🔒 Login or guest | `kg_token` OR `kg_guest_token` (invite) | profile_gate.js |
+| `/4DTicTacToe/lobby.html` | 🔒 Login required | Must have `kg_token` + profileSetup | profile_gate.js |
+| `/4DTicTacToe/game.html` | 🔒 Login or guest | `kg_token` OR `kg_guest_token` (invite) | profile_gate.js |
 | `/assemble/lobby.html` | 🔒 Login required | Must have `kg_token` + profileSetup | profile_gate.js |
 | `/assemble/game.html` | 🔒 Login or guest | `kg_token` OR `kg_guest_token` (invite) | profile_gate.js |
 | `/player/*` | 🔒 Login required | Must have `kg_token` + profileSetup | profile_gate.js |
@@ -89,26 +79,12 @@ Create ONE Cloudflare Access Self-Hosted Application:
 
 ## 3. CACHE RULES
 
-| Pattern | Cache Level | Edge TTL | Browser TTL |
-|---------|-------------|----------|-------------|
-| `kensgames.com/api/*` | Bypass | — | — |
-| `kensgames.com/*.html` | Standard | 4 hours | — |
-| `kensgames.com/js/*` | Aggressive | 7 days | — |
-| `kensgames.com/css/*` | Aggressive | 7 days | — |
-| `kensgames.com/**/*.glb` | Aggressive | 30 days | 7 days |
-| `kensgames.com/**/*.mp4` | Aggressive | 30 days | 7 days |
-| `kensgames.com/**/*.png` | Aggressive | 30 days | 7 days |
-| `kensgames.com/**/*.webp` | Aggressive | 30 days | 7 days |
-| `kensgames.com/**/*.jpg` | Aggressive | 30 days | 7 days |
-| `kensgames.com/**/*.svg` | Aggressive | 30 days | 7 days |
-
-**Binary cache-busting contract:** filenames are treated as content identity. To
-replace a binary master, either rename the file or append a `?v=<hash>` query
-string at the reference site. Do not edit a binary in place under the same name.
-
-**Rationale:** masters stay in the kensgames repo (Option A — cache-only). The
-CDN absorbs bandwidth; the repo absorbs storage. Origin CPU never touches the
-binary after first cache fill.
+| Pattern | Cache Level | Edge TTL |
+|---------|-------------|----------|
+| `kensgames.com/api/*` | Bypass | — |
+| `kensgames.com/*.html` | Standard | 4 hours |
+| `kensgames.com/js/*` | Aggressive | 7 days |
+| `kensgames.com/css/*` | Aggressive | 7 days |
 
 ---
 
@@ -124,4 +100,4 @@ binary after first cache fill.
 
 ---
 
-*kensgames.com — Last updated: 2026-04-22*
+*kensgames.com — Last updated: 2026-04-18*

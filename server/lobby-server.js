@@ -27,31 +27,6 @@ const http = require('http');
 
 const AuthHandler = require('./auth-handler');
 
-// ── Match server (authoritative game state, dimensional `x`-style) ──
-// Optional TetracubeDB persistence: only enabled when env credentials present.
-let _tcube = null;
-try {
-  if (process.env.TETRACUBE_CLIENT_ID && process.env.TETRACUBE_API_KEY) {
-    const TetracubeClient = require('../../../tetracubedb/client/tetracube_client');
-    _tcube = new TetracubeClient({
-      url: process.env.TETRACUBE_URL || 'https://tetracubedb.com',
-      clientId: process.env.TETRACUBE_CLIENT_ID,
-      apiKey: process.env.TETRACUBE_API_KEY,
-      namespace: process.env.TETRACUBE_NAMESPACE || 'kensgames',
-    });
-    console.log('[Lobby] TetracubeDB persistence enabled');
-  } else {
-    console.log('[Lobby] TetracubeDB persistence disabled (no credentials in env)');
-  }
-} catch (e) {
-  console.warn('[Lobby] TetracubeDB client load failed:', e.message);
-}
-const matchServer = require('./match-server')({
-  tetracube: _tcube,
-  namespace: 'kensgames',
-  log: (...a) => console.log('[match]', ...a),
-});
-
 const PORT = 8765;
 
 const authHandler = new AuthHandler();
@@ -68,14 +43,6 @@ function postAuthSendSessionState(ws, userId) {
   const session = findSessionByPlayer(userId);
   if (!session) return;
 
-  // Mark the player back online — they may have been flagged offline by
-  // a previous disconnect (browser refresh, tab switch, network blip).
-  const player = session.players.find(p => p.user_id === userId);
-  if (player) {
-    player.online = true;
-    delete player.disconnected_at;
-  }
-
   // Unified clients expect a session_update to hydrate UI.
   send(ws, { type: 'session_update', session: sanitizeSession(session), action: 'resume' });
   if (session.status === 'playing') {
@@ -91,80 +58,9 @@ const users = new Map();       // oddddd oddddd user_id → { user_id, username,
 const sessions = new Map();    // session_id → { session_id, session_code, host_id, players, ... }
 const codeIndex = new Map();   // 6-char code → session_id
 const connections = new Map(); // ws → { user_id, user }
-const launchObjects = new Map(); // launch_id → signed launch object envelope
-const guestAnchors = new Map(); // guest_token → { guest_id, username, avatar_id, ip_hash, ua_hash, expires_at }
-const guestAnchorRate = new Map(); // ip_hash → [timestamps within the rate window]
 
 let nextUserId = 1;
 let nextSessionId = 1;
-
-const LAUNCH_OBJECT_TTL_MS = 20 * 60 * 1000; // 20 minutes
-const GUEST_ANCHOR_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
-const GUEST_ANCHOR_RATE_LIMIT = 10; // requests per IP per window
-const GUEST_ANCHOR_RATE_WINDOW_MS = 60 * 1000; // 1 minute
-const LAUNCH_SIGNING_SECRET = process.env.LOBBY_LAUNCH_SECRET
-  || process.env.JWT_SECRET
-  || 'dev-launch-secret-change-in-production';
-
-// ── disk persistence for sessions/codeIndex ───────────────────────────────
-// kensgames-lobby is a separate PM2 process; without disk persistence every
-// restart wipes all in-flight invite codes ("Invalid game code" for joiners).
-const _fsLP = require('fs');
-const _pathLP = require('path');
-const LOBBY_SESSIONS_FILE = process.env.LOBBY_SESSIONS_FILE
-  || _pathLP.join(__dirname, 'data', 'lobby-sessions.json');
-const LOBBY_SESSION_TTL_MS = 4 * 60 * 60 * 1000; // 4h — generous; expired entries skipped on load
-
-try { _fsLP.mkdirSync(_pathLP.dirname(LOBBY_SESSIONS_FILE), { recursive: true }); } catch (_) { }
-
-// Restore on boot
-try {
-  if (_fsLP.existsSync(LOBBY_SESSIONS_FILE)) {
-    const raw = _fsLP.readFileSync(LOBBY_SESSIONS_FILE, 'utf8');
-    const parsed = raw ? JSON.parse(raw) : {};
-    const now = Date.now();
-    let restored = 0;
-    for (const sess of Object.values(parsed.sessions || {})) {
-      if (!sess || typeof sess !== 'object' || !sess.session_id) continue;
-      if (sess.created_at && (now - sess.created_at) > LOBBY_SESSION_TTL_MS) continue;
-      // Mark all previously-connected players as offline; they must reconnect.
-      if (Array.isArray(sess.players)) {
-        for (const p of sess.players) { if (p) p.online = false; }
-      }
-      sessions.set(sess.session_id, sess);
-      if (sess.session_code) codeIndex.set(sess.session_code, sess.session_id);
-      restored++;
-    }
-    if (restored > 0) console.log(`[lobby] restored ${restored} session(s) from ${LOBBY_SESSIONS_FILE}`);
-  }
-} catch (err) {
-  console.warn('[lobby] failed to load sessions from disk:', err.message);
-}
-
-let _lobbyLastSer = '';
-function _flushLobbySessions() {
-  try {
-    const dump = { sessions: {} };
-    for (const [id, s] of sessions.entries()) {
-      // Strip transient/non-serialisable fields if present.
-      const { ws: _ws, _ws: _ws2, ...safe } = s || {};
-      dump.sessions[id] = safe;
-    }
-    const ser = JSON.stringify(dump);
-    if (ser === _lobbyLastSer) return;
-    const tmp = `${LOBBY_SESSIONS_FILE}.tmp`;
-    _fsLP.writeFileSync(tmp, ser);
-    _fsLP.renameSync(tmp, LOBBY_SESSIONS_FILE);
-    _lobbyLastSer = ser;
-  } catch (err) {
-    console.warn('[lobby] sessions flush failed:', err.message);
-  }
-}
-const _lobbyFlushTimer = setInterval(_flushLobbySessions, 1500);
-if (typeof _lobbyFlushTimer.unref === 'function') _lobbyFlushTimer.unref();
-process.once('SIGINT', _flushLobbySessions);
-process.once('SIGTERM', _flushLobbySessions);
-process.once('beforeExit', _flushLobbySessions);
 
 // AI name pool
 const AI_NAMES = [
@@ -238,261 +134,6 @@ function authApiValidateToken(token) {
   });
 }
 
-function parseJsonBody(req) {
-  return new Promise((resolve, reject) => {
-    let raw = '';
-    req.on('data', (chunk) => {
-      raw += chunk;
-      if (raw.length > 1024 * 1024) {
-        reject(new Error('Payload too large'));
-        req.destroy();
-      }
-    });
-    req.on('end', () => {
-      if (!raw) {
-        resolve({});
-        return;
-      }
-      try {
-        resolve(JSON.parse(raw));
-      } catch (_) {
-        reject(new Error('Invalid JSON body'));
-      }
-    });
-    req.on('error', reject);
-  });
-}
-
-function sha256Hex(input) {
-  return crypto.createHash('sha256').update(String(input || '')).digest('hex');
-}
-
-function hmacLaunchSig(launchId, launchHash, expiresAt) {
-  return crypto
-    .createHmac('sha256', LAUNCH_SIGNING_SECRET)
-    .update(`${launchId}:${launchHash}:${expiresAt}`)
-    .digest('hex');
-}
-
-function timingSafeEqualHex(a, b) {
-  if (typeof a !== 'string' || typeof b !== 'string') return false;
-  const ba = Buffer.from(a, 'utf8');
-  const bb = Buffer.from(b, 'utf8');
-  if (ba.length !== bb.length) return false;
-  return crypto.timingSafeEqual(ba, bb);
-}
-
-function sanitizeExtraParams(raw) {
-  if (!raw || typeof raw !== 'object') return {};
-  const out = {};
-  for (const [k, v] of Object.entries(raw)) {
-    if (!k || typeof k !== 'string') continue;
-    if (typeof v === 'string') out[k.slice(0, 64)] = v.slice(0, 256);
-    else if (typeof v === 'number' || typeof v === 'boolean') out[k.slice(0, 64)] = v;
-  }
-  return out;
-}
-
-function buildLaunchObjectEnvelope(session, authUserId, reqBody, req) {
-  const now = Date.now();
-  const launchId = generateId('launch');
-  const expiresAt = now + LAUNCH_OBJECT_TTL_MS;
-  const requesterLobbyUserId = `user_${authUserId}`;
-  const players = (session.players || []).map((p) => ({
-    user_id: p.user_id,
-    username: p.username,
-    avatar_id: p.avatar_id,
-    is_host: !!p.is_host,
-    is_ai: !!p.is_ai,
-    ready: !!p.ready,
-    slot: Number(p.slot) || 0,
-  }));
-  const bots = players.filter((p) => p.is_ai).length;
-  const humanPlayers = players.filter((p) => !p.is_ai).length;
-  const forwardedFor = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
-  const userAgent = req.headers['user-agent'] || '';
-  const extraParams = sanitizeExtraParams(reqBody && reqBody.extra_params);
-
-  const launchObject = {
-    launch_id: launchId,
-    game_id: session.game_id || 'fasttrack',
-    mode: 'multi',
-    session_id: session.session_id,
-    code: session.session_code,
-    match_id: (reqBody && reqBody.match_id) || session.match_id || null,
-    host_id: session.host_id,
-    host_username: session.host_username,
-    players,
-    player_count: players.length,
-    human_players: humanPlayers,
-    bots,
-    max_players: Number(session.max_players) || players.length,
-    status: session.status || 'waiting',
-    settings: session.settings || {},
-    authorization: {
-      requested_by: requesterLobbyUserId,
-      requested_by_auth_user_id: String(authUserId),
-      auth_hash: sha256Hex(`${session.session_id}:${requesterLobbyUserId}:${session.session_code}:${LAUNCH_SIGNING_SECRET}`),
-      ip_hash: sha256Hex(forwardedFor),
-      user_agent_hash: sha256Hex(userAgent),
-    },
-    extra_params: extraParams,
-    created_at: now,
-    expires_at: expiresAt,
-  };
-
-  const launchHash = sha256Hex(JSON.stringify(launchObject));
-  const sig = hmacLaunchSig(launchId, launchHash, expiresAt);
-  const envelope = {
-    launch_id: launchId,
-    launch_hash: launchHash,
-    sig,
-    created_at: now,
-    expires_at: expiresAt,
-    launch: launchObject,
-  };
-  launchObjects.set(launchId, envelope);
-  return envelope;
-}
-
-// ── Guest anchor (x_1 in higher plane for unauthenticated invitees) ──────
-// A guest anchor binds a user-chosen username + avatar to a server-minted
-// guest_id, signed via HMAC. The guest_token returned is accepted by
-// /ws/launch-object the same way a Bearer JWT is, but namespace-isolated
-// (guest_id, never user_id) so guests cannot impersonate registered players.
-
-function sanitizeAnchorString(s, max) {
-  if (typeof s !== 'string') return '';
-  return s.replace(/[\x00-\x1f\x7f]/g, '').trim().slice(0, max || 64);
-}
-
-function guestAnchorRateLimitOk(ipHash) {
-  const now = Date.now();
-  const cutoff = now - GUEST_ANCHOR_RATE_WINDOW_MS;
-  const arr = guestAnchorRate.get(ipHash) || [];
-  const fresh = arr.filter((t) => t > cutoff);
-  fresh.push(now);
-  guestAnchorRate.set(ipHash, fresh);
-  return fresh.length <= GUEST_ANCHOR_RATE_LIMIT;
-}
-
-function mintGuestAnchor(username, avatarId, req) {
-  const cleanName = sanitizeAnchorString(username, 32);
-  const cleanAvatar = sanitizeAnchorString(avatarId, 64);
-  if (!cleanName) return { error: 'username required' };
-  const forwardedFor = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
-  const userAgent = req.headers['user-agent'] || '';
-  const ipHash = sha256Hex(forwardedFor);
-  if (!guestAnchorRateLimitOk(ipHash)) return { error: 'Rate limit exceeded' };
-
-  const now = Date.now();
-  const expiresAt = now + GUEST_ANCHOR_TTL_MS;
-  const guestId = `guest_${crypto.randomBytes(16).toString('hex')}`;
-  const tokenSeed = crypto.randomBytes(24).toString('hex');
-  const guestToken = `guest-${guestId.slice(6)}-${tokenSeed}`;
-  const anchor = {
-    guest_id: guestId,
-    guest_token: guestToken,
-    username: cleanName,
-    avatar_id: cleanAvatar,
-    ip_hash: ipHash,
-    user_agent_hash: sha256Hex(userAgent),
-    created_at: now,
-    expires_at: expiresAt,
-  };
-  guestAnchors.set(guestToken, anchor);
-  return { anchor };
-}
-
-function validateGuestToken(token) {
-  if (!token || typeof token !== 'string') return null;
-  const anchor = guestAnchors.get(token);
-  if (!anchor) return null;
-  if (Date.now() > anchor.expires_at) {
-    guestAnchors.delete(token);
-    return null;
-  }
-  return anchor;
-}
-
-// ── Solo launch envelope (no lobby session, single player + optional bots) ──
-function buildSoloLaunchEnvelope(identity, reqBody, req) {
-  const now = Date.now();
-  const launchId = generateId('launch');
-  const expiresAt = now + LAUNCH_OBJECT_TTL_MS;
-  const gameId = sanitizeAnchorString(reqBody && reqBody.game_id, 32) || 'fasttrack';
-  const extraParams = sanitizeExtraParams(reqBody && reqBody.extra_params);
-  const forwardedFor = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '';
-  const userAgent = req.headers['user-agent'] || '';
-
-  const humanPlayer = {
-    user_id: identity.user_id,
-    username: identity.username,
-    avatar_id: identity.avatar_id,
-    is_host: true,
-    is_ai: false,
-    ready: true,
-    slot: 0,
-  };
-  const botCount = Math.max(0, Math.min(7, Number(extraParams.bots) || 0));
-  const aiLevel = sanitizeAnchorString(extraParams.ai_level, 16) || 'normal';
-  const players = [humanPlayer];
-  for (let i = 0; i < botCount; i++) {
-    players.push({
-      user_id: `bot_${launchId}_${i}`,
-      username: AI_NAMES[i % AI_NAMES.length],
-      avatar_id: '🤖',
-      is_host: false,
-      is_ai: true,
-      ai_level: aiLevel,
-      ready: true,
-      slot: i + 1,
-    });
-  }
-
-  const launchObject = {
-    launch_id: launchId,
-    game_id: gameId,
-    mode: 'solo',
-    session_id: null,
-    code: null,
-    match_id: null,
-    host_id: identity.user_id,
-    host_username: identity.username,
-    players,
-    player_count: players.length,
-    human_players: 1,
-    bots: botCount,
-    max_players: players.length,
-    status: 'playing',
-    settings: {},
-    authorization: {
-      requested_by: identity.user_id,
-      requested_by_auth_user_id: identity.auth_user_id || null,
-      identity_kind: identity.kind,
-      auth_hash: sha256Hex(`${launchId}:${identity.user_id}:${gameId}:${LAUNCH_SIGNING_SECRET}`),
-      ip_hash: sha256Hex(forwardedFor),
-      user_agent_hash: sha256Hex(userAgent),
-    },
-    extra_params: extraParams,
-    created_at: now,
-    expires_at: expiresAt,
-  };
-
-  const launchHash = sha256Hex(JSON.stringify(launchObject));
-  const sig = hmacLaunchSig(launchId, launchHash, expiresAt);
-  const envelope = {
-    launch_id: launchId,
-    launch_hash: launchHash,
-    sig,
-    created_at: now,
-    expires_at: expiresAt,
-    launch: launchObject,
-  };
-  launchObjects.set(launchId, envelope);
-  return envelope;
-}
-
 function hashPassword(pw) {
   return crypto.createHash('sha256').update(pw).digest('hex');
 }
@@ -529,19 +170,13 @@ function getWsByUserId(userId) {
 
 // ── Registered game types ──
 const GAME_REGISTRY = {
-  // Standard entry point: every game uses game.html as canonical
-  fasttrack: { name: 'Fast Track', path: '/fasttrack/game.html', lobby: '/play/?game=fasttrack', maxPlayers: 6, type: 'turn' },
-  brickbreaker3d: { name: 'BrickBreaker 3D', path: '/brickbreaker3d/game.html', lobby: '/play/?game=brickbreaker3d', maxPlayers: 4, type: 'realtime' },
-  brickbreaker: { name: 'BrickBreaker 3D', path: '/brickbreaker3d/game.html', lobby: '/play/?game=brickbreaker3d', maxPlayers: 4, type: 'realtime' }, // legacy alias
-  starfighter: { name: 'Starfighter', path: '/starfighter/', lobby: '/play/?game=starfighter', maxPlayers: 6, type: 'realtime' },
-  assemble: { name: 'Assemble', path: '/assemble/game.html', lobby: '/play/?game=assemble', maxPlayers: 4, type: 'realtime' },
-  '4dconnect': { name: '4D Connect', path: '/4dconnect/game.html', lobby: '/play/?game=4dconnect', maxPlayers: 2, type: 'turn' },
-  chomp: { name: 'Chomp! Wally', path: '/chomp/game.html', lobby: '/play/?game=chomp', maxPlayers: 1, type: 'solo' },
+  fasttrack: { name: 'Fast Track', path: '/fasttrack/3d.html', lobby: '/fasttrack/lobby.html', maxPlayers: 6, type: 'turn' },
+  brickbreaker: { name: 'BrickBreaker 3D', path: '/brickbreaker3d/play.html', lobby: '/brickbreaker3d/lobby.html', maxPlayers: 4, type: 'realtime' },
+  starfighter: { name: 'Starfighter', path: '/starfighter/index.html', lobby: '/starfighter/lobby.html', maxPlayers: 6, type: 'realtime' },
   connectiv: { name: 'ConnectIV', path: '/connectiv/index.html', lobby: '/connectiv/lobby.html', maxPlayers: 2, type: 'turn' },
   swartzdia: { name: 'Swartz Diamond', path: '/swartzdia/index.html', lobby: '/swartzdia/lobby.html', maxPlayers: 4, type: 'turn' },
   cubemarble: { name: 'Cube Marble', path: '/cubemarble/index.html', lobby: '/cubemarble/lobby.html', maxPlayers: 4, type: 'turn' },
-  tictactoe: { name: '4D Connect', path: '/4dconnect/game.html', lobby: '/play/?game=4dconnect', maxPlayers: 2, type: 'turn' }, // legacy alias
-  '4dtictactoe': { name: '4D Connect', path: '/4dconnect/game.html', lobby: '/play/?game=4dconnect', maxPlayers: 2, type: 'turn' }, // legacy alias -> 4dconnect
+  tictactoe: { name: '4D TicTacToe', path: '/4DTicTacToe/index.html', lobby: '/4DTicTacToe/lobby.html', maxPlayers: 4, type: 'turn' },
 };
 
 function resetLobbyAcceptance(session) {
@@ -587,8 +222,7 @@ function sanitizeSession(s) {
       ready: p.ready
     })),
     settings: s.settings,
-    status: s.status,
-    match_id: s.match_id || null,
+    status: s.status
   };
 }
 
@@ -641,23 +275,6 @@ handlers.ping = (ws) => {
   send(ws, { type: 'pong' });
 };
 
-// Portal home page — real-time online count. No auth required.
-// Count only authenticated, non-guest users (one per distinct user_id).
-handlers.get_portal_stats = (ws) => {
-  const authedUsers = new Set();
-  for (const conn of connections.values()) {
-    const uid = conn && conn.user_id;
-    if (!uid) continue;
-    if (typeof uid === 'string' && uid.startsWith('guest-')) continue;
-    authedUsers.add(uid);
-  }
-  send(ws, {
-    type: 'portal_stats',
-    online: authedUsers.size,
-    active_sessions: sessions.size
-  });
-};
-
 // Some join flows send this when the user hits Cancel on a join spinner.
 // We don't currently keep a pending-approval queue, so this is a no-op.
 handlers.cancel_join_request = () => { };
@@ -671,33 +288,26 @@ handlers.auth = async (ws, data) => {
   const username = (data && (data.username || data.guest_name)) ? String(data.username || data.guest_name) : 'Guest';
   const avatarId = (data && data.avatar_id) ? String(data.avatar_id) : (data && data.avatarId) ? String(data.avatarId) : null;
 
-  // Multiplayer flows require a signed-in account identity.
+  // Guest path
   if (!token || token.startsWith('guest-')) {
-    send(ws, { type: 'error', message: 'Sign in required for multiplayer and lobby actions' });
-    return;
+    return handlers.guest_login(ws, { name: username, avatar_id: avatarId || 'person_smile', token });
   }
 
   // Signed-in path (validate token)
   try {
     const res = await authApiValidateToken(token);
     if (res.status !== 200 || !res.body || !res.body.valid) {
-      send(ws, { type: 'error', message: 'Session expired. Please sign in again.' });
-      return;
-    }
-
-    if (res.body.profileSetup !== true) {
-      send(ws, { type: 'error', message: 'Complete profile setup before joining multiplayer' });
-      return;
+      // Fallback to guest if token invalid (keeps invite links usable)
+      return handlers.guest_login(ws, { name: username, avatar_id: avatarId || 'person_smile' });
     }
 
     const userId = `user_${res.body.userId}`;
     const user = {
       user_id: userId,
       id: userId,
-      username: (res.body.playername || username).slice(0, 20),
-      avatar_id: res.body.avatarId || avatarId || 'person_smile',
+      username: username.slice(0, 20),
+      avatar_id: avatarId || 'person_smile',
       is_guest: false,
-      profileSetup: res.body.profileSetup === true,
       prestige_level: 'bronze',
       prestige_points: 0,
       games_played: 0,
@@ -710,8 +320,8 @@ handlers.auth = async (ws, data) => {
     postAuthSendSessionState(ws, userId);
   } catch (e) {
     console.error('[Lobby] Auth validate error:', e.message);
-    send(ws, { type: 'error', message: 'Authentication unavailable. Please try again.' });
-    return;
+    // Non-fatal: allow guest so invites still work
+    return handlers.guest_login(ws, { name: username, avatar_id: avatarId || 'person_smile', token });
   }
 };
 
@@ -793,10 +403,57 @@ handlers.login = async (ws, data) => {
 };
 
 handlers.register = async (ws, data) => {
-  send(ws, {
-    type: 'error',
-    message: 'Use /register for account creation (email, password confirmation, TOS).'
-  });
+  const { username, password } = data;
+  if (!username || !password) {
+    send(ws, { type: 'error', message: 'Username and password required' });
+    return;
+  }
+  if (username.length < 3) {
+    send(ws, { type: 'error', message: 'Username must be at least 3 characters' });
+    return;
+  }
+  if (password.length < 4) {
+    send(ws, { type: 'error', message: 'Password must be at least 4 characters' });
+    return;
+  }
+
+  try {
+    const res = await authApiRequest('/api/auth/register', {
+      username,
+      password,
+      email: data.email || null
+    });
+    if (res.body.success) {
+      const userId = `user_${res.body.userId}`;
+      const user = {
+        user_id: userId,
+        id: userId,
+        username: res.body.username || username,
+        avatar_id: 'person_smile',
+        is_guest: false,
+        prestige_level: 'bronze',
+        prestige_points: 0,
+        games_played: 0,
+        games_won: 0,
+        guild_id: null,
+        auth_token: res.body.token
+      };
+      users.set(username, user);
+      connections.set(ws, { user_id: userId, user });
+      send(ws, {
+        type: 'auth_success',
+        action: 'register',
+        user: { ...user, auth_token: undefined },
+        user_id: user.user_id,
+        username: user.username
+      });
+    } else {
+      send(ws, { type: 'error', message: res.body.error || 'Registration failed' });
+    }
+  } catch (e) {
+    console.error('[Lobby] Auth API register error:', e.message);
+    send(ws, { type: 'error', message: 'Registration service unavailable. Try again.' });
+  }
 };
 
 handlers.logout = (ws) => {
@@ -837,9 +494,9 @@ handlers.create_session = (ws, data) => {
     return;
   }
 
-  // Multiplayer sessions are persistent and require signed-in accounts.
-  if (conn.user.is_guest) {
-    send(ws, { type: 'error', message: 'Sign in to create multiplayer sessions' });
+  // Guests may create PRIVATE invite-code sessions, but not public listings.
+  if (conn.user.is_guest && !(data && data.private)) {
+    send(ws, { type: 'error', message: 'Sign in to create public games' });
     return;
   }
 
@@ -889,8 +546,8 @@ handlers.create_session = (ws, data) => {
   sessions.set(sessionId, session);
   codeIndex.set(code, sessionId);
 
-  // Canonical invite URL format used across all games.
-  const shareUrl = `/play/?game=${encodeURIComponent(gameId)}&code=${encodeURIComponent(code)}`;
+  // Game-agnostic share URL — portal join page resolves the game from the code
+  const shareUrl = `/lobby/join.html?code=${code}`;
 
   send(ws, {
     type: 'session_created',
@@ -1024,7 +681,6 @@ handlers.matchmake = (ws, data) => {
 handlers.resolve_code = (ws, data) => {
   const code = (data.code || '').toUpperCase().trim();
   const sessionId = codeIndex.get(code);
-  console.log(`[lobby] resolve_code code=${code} known=${codeIndex.size} hit=${!!sessionId}`);
   if (!sessionId) {
     send(ws, { type: 'resolve_code_result', found: false, code });
     return;
@@ -1059,12 +715,9 @@ handlers.join_session = (ws, data) => {
     return handlers.join_by_code(ws, { code: data.code });
   }
 
-  // Joining multiplayer requires a signed-in identity, EXCEPT when the
-  // join was triggered by a private invite code (data._fromCode === true).
-  // Invite-code joiners can be guests (the host vouched for them by sharing
-  // the code).
-  if (conn.user.is_guest && !data._fromCode) {
-    send(ws, { type: 'error', message: 'Sign in to join multiplayer sessions' });
+  // Spec: joining via browsing/match sessions requires sign-in (invite codes are the exception)
+  if (conn.user.is_guest && !(data && data.allow_guest)) {
+    send(ws, { type: 'error', message: 'Sign in to join games (invite codes are the exception)' });
     return;
   }
 
@@ -1147,30 +800,14 @@ handlers.join_by_code = (ws, data) => {
   }
 
   const code = (data.code || '').toUpperCase().trim();
-  let sessionId = codeIndex.get(code);
-  if (!sessionId) {
-    // Fallback: linear scan in case codeIndex got out of sync with sessions
-    for (const s of sessions.values()) {
-      if (s && s.session_code === code) { sessionId = s.session_id; codeIndex.set(code, sessionId); break; }
-    }
-  }
-  console.log(`[lobby] join_by_code code=${JSON.stringify(code)} rawData=${JSON.stringify(data)} known=${codeIndex.size} keys=${JSON.stringify([...codeIndex.keys()])} hit=${!!sessionId} user=${conn.user_id}`);
+  const sessionId = codeIndex.get(code);
   if (!sessionId) {
     send(ws, { type: 'error', message: 'Invalid game code' });
     return;
   }
 
-  // Optional inline name/avatar update from the invitee onboarding panel.
-  if (data.name && conn.user) {
-    conn.user.username = String(data.name).slice(0, 20).trim() || conn.user.username;
-  }
-  if (data.avatar_id && conn.user) {
-    conn.user.avatar_id = String(data.avatar_id);
-  }
-
-  // Delegate to join_session, marking the call as code-originated so guests
-  // (invitees who haven't registered) are allowed through.
-  handlers.join_session(ws, { session_id: sessionId, _fromCode: true });
+  // Delegate to join_session
+  handlers.join_session(ws, { session_id: sessionId, allow_guest: true });
 };
 
 handlers.leave_session = (ws) => {
@@ -1206,26 +843,23 @@ handlers.update_player_info = (ws, data) => {
   const conn = connections.get(ws);
   if (!conn) return;
 
-  // Playername is immutable after registration/profile setup.
   if (data.username) {
-    send(ws, { type: 'error', message: 'Playername cannot be changed after account setup' });
+    conn.user.username = data.username.slice(0, 20);
   }
-
-  const session = findSessionByPlayer(conn.user_id);
-  if (session && session.status === 'playing' && data.avatar_id) {
-    send(ws, { type: 'error', message: 'Cannot change avatar during active gameplay' });
-    return;
-  }
-
   if (data.avatar_id) {
     conn.user.avatar_id = data.avatar_id;
   }
 
   // Update in session too
+  const session = findSessionByPlayer(conn.user_id);
   if (session) {
     const player = session.players.find(p => p.user_id === conn.user_id);
     if (player) {
+      if (data.username) player.username = conn.user.username;
       if (data.avatar_id) player.avatar_id = conn.user.avatar_id;
+    }
+    if (session.host_id === conn.user_id && data.username) {
+      session.host_username = conn.user.username;
     }
   }
 };
@@ -1350,89 +984,6 @@ handlers.add_ai_player = (ws, data) => {
 
 // Aliases for unified clients
 handlers.add_ai = (ws, data) => handlers.add_ai_player(ws, { level: data && data.difficulty ? data.difficulty : (data && data.level ? data.level : 'medium') });
-handlers.add_bot = (ws, data) => handlers.add_ai_player(ws, { level: (data && data.level) || 'medium' });
-
-// ── Join Requests (host-gated open sessions) ──
-// Player requests to join; only the host sees it until accepted.
-handlers.request_join = (ws, data) => {
-  const conn = connections.get(ws);
-  if (!conn) return;
-
-  const sessionId = data.session_id;
-  const session = sessions.get(sessionId);
-  if (!session) { send(ws, { type: 'error', message: 'Game not found' }); return; }
-  if (session.status !== 'waiting') { send(ws, { type: 'error', message: 'Game already started' }); return; }
-  if (session.players.length >= session.max_players) { send(ws, { type: 'error', message: 'Game is full' }); return; }
-  if (session.players.some(p => p.user_id === conn.user_id)) { send(ws, { type: 'error', message: 'Already in this game' }); return; }
-
-  // Acknowledge requester
-  send(ws, { type: 'join_requested', session_id: sessionId });
-
-  // Notify host only
-  const hostWs = getWsByUserId(session.host_id);
-  if (hostWs) {
-    send(hostWs, {
-      type: 'join_request',
-      session_id: sessionId,
-      player: { user_id: conn.user_id, username: conn.user.username, avatar_id: conn.user.avatar_id }
-    });
-  }
-};
-
-handlers.accept_join_request = (ws, data) => {
-  const conn = connections.get(ws);
-  if (!conn) return;
-
-  const session = findSessionByPlayer(conn.user_id);
-  if (!session || session.host_id !== conn.user_id) { send(ws, { type: 'error', message: 'Only the host can accept players' }); return; }
-
-  const targetUserId = data.user_id;
-  if (!targetUserId) return;
-  if (session.players.length >= session.max_players) { send(ws, { type: 'error', message: 'Game is full' }); return; }
-
-  // Find the requester's connection
-  let targetWs = null;
-  for (const [cws, cconn] of connections) {
-    if (cconn.user_id === targetUserId) { targetWs = cws; break; }
-  }
-  if (!targetWs) { send(ws, { type: 'error', message: 'Player is no longer connected' }); return; }
-
-  const targetConn = connections.get(targetWs);
-  const player = {
-    user_id: targetUserId,
-    username: targetConn.user.username,
-    avatar_id: targetConn.user.avatar_id,
-    is_host: false, is_ai: false,
-    slot: session.players.length,
-    ready: false
-  };
-  session.players.push(player);
-  resetLobbyAcceptance(session);
-
-  // Tell the accepted player they're in
-  send(targetWs, { type: 'session_joined', session: sanitizeSession(session) });
-  // Broadcast new roster to everyone in session
-  broadcastSessionUpdate(session, { action: 'player_joined' });
-  // Notify host of acceptance
-  send(ws, { type: 'join_request_accepted', user_id: targetUserId });
-};
-
-handlers.reject_join_request = (ws, data) => {
-  const conn = connections.get(ws);
-  if (!conn) return;
-
-  const session = findSessionByPlayer(conn.user_id);
-  if (!session || session.host_id !== conn.user_id) return;
-
-  const targetUserId = data.user_id;
-  for (const [cws, cconn] of connections) {
-    if (cconn.user_id === targetUserId) {
-      send(cws, { type: 'join_request_rejected', session_id: session.session_id });
-      break;
-    }
-  }
-  send(ws, { type: 'join_request_rejected_ack', user_id: targetUserId });
-};
 
 handlers.remove_ai_player = (ws, data) => {
   const conn = connections.get(ws);
@@ -1504,32 +1055,23 @@ handlers.start_game = (ws) => {
   }
 
   const allHumansReady = session.players
-    .filter(p => !p.is_ai && p.user_id !== session.host_id)
+    .filter(p => !p.is_ai)
     .every(p => !!p.ready);
   if (!allHumansReady) {
     send(ws, { type: 'error', message: 'All players must be ready' });
     return;
   }
 
-  // Auto-accept lobby when host explicitly launches
-  if (!session.settings) session.settings = {};
-  session.settings.lobby_accepted = true;
+  if (!session.settings || session.settings.lobby_accepted !== true) {
+    send(ws, { type: 'error', message: 'Host must accept the group before launch' });
+    return;
+  }
 
   session.status = 'playing';
 
-  // ── Create the authoritative match (dimensional x-seed + replay log) ──
-  let matchId = null;
-  try {
-    matchId = matchServer.createMatch(session);
-    session.match_id = matchId;
-  } catch (e) {
-    console.warn('[Lobby] match server skipped:', e.message);
-  }
-
   const payload = {
     type: 'game_started',
-    session: sanitizeSession(session),
-    match_id: matchId,
+    session: sanitizeSession(session)
   };
 
   // Notify all players including host
@@ -1544,7 +1086,7 @@ handlers.start_game = (ws) => {
 
 // --- Real-Time Game State Relay ---
 // These handlers support both real-time (Starfighter, BrickBreaker)
-// and turn-based (FastTrack, ConnectIV, 4D Connect) games.
+// and turn-based (FastTrack, ConnectIV, TicTacToe) games.
 // The server is a RELAY — it doesn't understand game logic, just forwards state.
 
 // Player state — high-frequency position/velocity updates (action games, ~20 Hz)
@@ -1771,14 +1313,14 @@ handlers.unblock_user = () => { };
 handlers.search_users_to_block = (ws) => {
   send(ws, { type: 'block_search_results', users: [] });
 };
-function emitReadyState(ws, readyValue) {
+handlers.toggle_ready = (ws) => {
   const conn = connections.get(ws);
   if (!conn) return;
   const session = findSessionByPlayer(conn.user_id);
   if (!session) return;
   const player = session.players.find(p => p.user_id === conn.user_id);
   if (player) {
-    player.ready = !!readyValue;
+    player.ready = !player.ready;
 
     resetLobbyAcceptance(session);
 
@@ -1802,222 +1344,15 @@ function emitReadyState(ws, readyValue) {
 
     broadcastSessionUpdate(session, { action: 'ready_changed' });
   }
-}
-
-handlers.toggle_ready = (ws) => {
-  const conn = connections.get(ws);
-  if (!conn) return;
-  const session = findSessionByPlayer(conn.user_id);
-  if (!session) return;
-  const player = session.players.find(p => p.user_id === conn.user_id);
-  if (!player) return;
-  emitReadyState(ws, !player.ready);
-};
-
-handlers.player_ready = (ws, msg) => {
-  const conn = connections.get(ws);
-  if (!conn) return;
-  const session = findSessionByPlayer(conn.user_id);
-  if (!session) return;
-  const player = session.players.find(p => p.user_id === conn.user_id);
-  if (!player) return;
-
-  if (typeof msg.ready === 'boolean') {
-    emitReadyState(ws, msg.ready);
-    return;
-  }
-
-  emitReadyState(ws, !player.ready);
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HTTP + WebSocket Server (same port)
 // ═══════════════════════════════════════════════════════════════════════════
 
-const httpServer = http.createServer(async (req, res) => {
-  const reqUrl = new URL(req.url || '/', 'http://localhost');
-  const path = reqUrl.pathname;
-
-  if (req.method === 'OPTIONS' && (
-    path === '/ws/launch-object' || path.startsWith('/ws/launch-object/') || path === '/ws/guest-anchor'
-  )) {
-    res.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    });
-    res.end();
-    return;
-  }
-
-  if (req.method === 'POST' && path === '/ws/guest-anchor') {
-    try {
-      const body = await parseJsonBody(req);
-      const result = mintGuestAnchor(body && body.username, body && body.avatar_id, req);
-      if (result.error) {
-        const code = result.error === 'Rate limit exceeded' ? 429 : 400;
-        res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ success: false, error: result.error }));
-        return;
-      }
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify({
-        success: true,
-        guest_id: result.anchor.guest_id,
-        guest_token: result.anchor.guest_token,
-        username: result.anchor.username,
-        avatar_id: result.anchor.avatar_id,
-        expires_at: result.anchor.expires_at,
-      }));
-      return;
-    } catch (e) {
-      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify({ success: false, error: 'Failed to mint guest anchor' }));
-      return;
-    }
-  }
-
-  if (req.method === 'POST' && path === '/ws/launch-object') {
-    try {
-      const authz = req.headers.authorization || '';
-      if (!authz.startsWith('Bearer ')) {
-        res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ success: false, error: 'Authentication required' }));
-        return;
-      }
-      const bearerToken = authz.slice(7);
-      const body = await parseJsonBody(req);
-      const requestedMode = String(body && body.mode || '').toLowerCase();
-
-      // ── Solo branch: x_local anchored to either authed user (x_1=user_id)
-      // or guest anchor (x_1=guest_id). No lobby session required.
-      if (requestedMode === 'solo') {
-        const guestAnchor = validateGuestToken(bearerToken);
-        let identity = null;
-        if (guestAnchor) {
-          identity = {
-            kind: 'guest',
-            user_id: guestAnchor.guest_id,
-            username: guestAnchor.username,
-            avatar_id: guestAnchor.avatar_id,
-            auth_user_id: null,
-          };
-        } else {
-          const validate = await authApiValidateToken(bearerToken);
-          const authUserId = validate && validate.status === 200 && validate.body && validate.body.valid
-            ? validate.body.userId
-            : null;
-          if (!authUserId) {
-            res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-            res.end(JSON.stringify({ success: false, error: 'Invalid auth token' }));
-            return;
-          }
-          identity = {
-            kind: 'user',
-            user_id: `user_${authUserId}`,
-            username: sanitizeAnchorString(body && body.username, 32) || (validate.body.username || `Player ${authUserId}`),
-            avatar_id: sanitizeAnchorString(body && body.avatar_id, 64) || (validate.body.avatarId || ''),
-            auth_user_id: String(authUserId),
-          };
-        }
-        const envelope = buildSoloLaunchEnvelope(identity, body, req);
-        res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({
-          success: true,
-          launch_ref: {
-            launch_id: envelope.launch_id,
-            sig: envelope.sig,
-            expires_at: envelope.expires_at,
-          },
-          launch_hash: envelope.launch_hash,
-        }));
-        return;
-      }
-
-      // ── Multi branch (unchanged): requires authed user + session membership.
-      const validate = await authApiValidateToken(bearerToken);
-      const authUserId = validate && validate.status === 200 && validate.body && validate.body.valid
-        ? validate.body.userId
-        : null;
-      if (!authUserId) {
-        res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ success: false, error: 'Invalid auth token' }));
-        return;
-      }
-      const sessionId = body && body.session_id ? String(body.session_id) : '';
-      if (!sessionId) {
-        res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ success: false, error: 'session_id required' }));
-        return;
-      }
-
-      const session = sessions.get(sessionId);
-      if (!session) {
-        res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ success: false, error: 'Session not found' }));
-        return;
-      }
-
-      const lobbyUserId = `user_${authUserId}`;
-      const isMember = (session.players || []).some((p) => p.user_id === lobbyUserId);
-      if (!isMember) {
-        res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ success: false, error: 'Not a session participant' }));
-        return;
-      }
-
-      const envelope = buildLaunchObjectEnvelope(session, authUserId, body, req);
-      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify({
-        success: true,
-        launch_ref: {
-          launch_id: envelope.launch_id,
-          sig: envelope.sig,
-          expires_at: envelope.expires_at,
-        },
-        launch_hash: envelope.launch_hash,
-      }));
-      return;
-    } catch (e) {
-      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify({ success: false, error: 'Failed to create launch object' }));
-      return;
-    }
-  }
-
-  if (req.method === 'GET' && path.startsWith('/ws/launch-object/')) {
-    const launchId = decodeURIComponent(path.slice('/ws/launch-object/'.length));
-    const sig = String(reqUrl.searchParams.get('sig') || '');
-    const envelope = launchObjects.get(launchId);
-    if (!envelope) {
-      res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify({ success: false, error: 'Launch object not found' }));
-      return;
-    }
-    if (Date.now() > envelope.expires_at) {
-      launchObjects.delete(launchId);
-      res.writeHead(410, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify({ success: false, error: 'Launch object expired' }));
-      return;
-    }
-
-    const expectedSig = hmacLaunchSig(envelope.launch_id, envelope.launch_hash, envelope.expires_at);
-    if (!timingSafeEqualHex(sig, expectedSig)) {
-      res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-      res.end(JSON.stringify({ success: false, error: 'Invalid launch signature' }));
-      return;
-    }
-
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-    res.end(JSON.stringify({
-      success: true,
-      launch_hash: envelope.launch_hash,
-      launch: envelope.launch,
-    }));
-    return;
-  }
-
-  if (path === '/' || path === '/health' || path === '/status') {
+const httpServer = http.createServer((req, res) => {
+  const url = req.url || '/';
+  if (url === '/' || url === '/health' || url === '/status') {
     const body = {
       service: 'fasttrack-lobby',
       status: 'ok',
@@ -2064,35 +1399,29 @@ wss.on('connection', (ws) => {
         console.error(`[Lobby] Handler error for ${data.type}:`, err);
         send(ws, { type: 'error', message: 'Server error' });
       }
-    } else if (matchServer.handleWsMessage(ws, data)) {
-      // routed to the match server
     } else {
       console.warn(`[Lobby] Unknown message type: ${data.type}`);
     }
   });
 
   ws.on('close', () => {
-    matchServer.detachWs(ws);
     const conn = connections.get(ws);
     if (conn) {
-      // Mark player offline but DO NOT delete the session. Hosts often
-      // disconnect briefly (refresh, switch tabs to copy the invite link,
-      // mobile network blip) — deleting the session would invalidate the
-      // invite code their friends are about to use. The 30-min stale-session
-      // sweep still reaps truly abandoned waiting rooms.
+      // Remove from any session
       const session = findSessionByPlayer(conn.user_id);
       if (session) {
-        const player = session.players.find(p => p.user_id === conn.user_id);
-        if (player) {
-          player.online = false;
-          player.disconnected_at = Date.now();
+        const sessionId = session.session_id;
+        removePlayerFromSession(conn.user_id);
+        if (sessions.has(sessionId)) {
+          broadcast(sessionId, {
+            type: 'player_left',
+            username: conn.user.username,
+            players: session.players.map(p => ({
+              user_id: p.user_id, username: p.username, avatar_id: p.avatar_id,
+              is_host: p.is_host, is_ai: p.is_ai, slot: p.slot, ready: p.ready
+            }))
+          });
         }
-        // Notify peers that this player went offline (without removing them).
-        broadcast(session.session_id, {
-          type: 'player_offline',
-          user_id: conn.user_id,
-          username: conn.user.username,
-        });
       }
       connections.delete(ws);
     }
@@ -2113,25 +1442,6 @@ setInterval(() => {
       sessions.delete(id);
       console.log(`[Lobby] Cleaned up stale session ${id}`);
     }
-  }
-
-  for (const [launchId, envelope] of launchObjects) {
-    if (!envelope || Date.now() > envelope.expires_at) {
-      launchObjects.delete(launchId);
-    }
-  }
-
-  for (const [token, anchor] of guestAnchors) {
-    if (!anchor || Date.now() > anchor.expires_at) {
-      guestAnchors.delete(token);
-    }
-  }
-
-  const rateCutoff = Date.now() - GUEST_ANCHOR_RATE_WINDOW_MS;
-  for (const [ipHash, stamps] of guestAnchorRate) {
-    const fresh = stamps.filter((t) => t > rateCutoff);
-    if (fresh.length === 0) guestAnchorRate.delete(ipHash);
-    else guestAnchorRate.set(ipHash, fresh);
   }
 }, 5 * 60 * 1000);
 

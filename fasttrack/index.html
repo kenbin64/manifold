@@ -6,7 +6,7 @@
     <script>
         (function () {
             var t = localStorage.getItem('kg_token');
-            if (t) { fetch('/api/auth/validate', { headers: { Authorization: 'Bearer ' + t } }).then(function (r) { if (r.ok) window.location.replace('/play/?game=fasttrack'); }).catch(function () { }); }
+            if (t) { fetch('/api/auth/validate', { headers: { Authorization: 'Bearer ' + t } }).then(function (r) { if (r.ok) window.location.replace('/fasttrack/lobby.html'); }).catch(function () { }); }
         })();
     </script>
     <meta charset="UTF-8">
@@ -20,8 +20,8 @@
     <link rel="canonical" href="https://kensgames.com/fasttrack/">
 
     <script src="/js/access_status.js" defer></script>
-    <script src="/js/substrates/avatar_picker.js?v=20260424" defer></script>
-    <script src="/js/substrates/player_profile.js?v=20260424" defer></script>
+    <script src="/js/substrates/avatar_picker.js" defer></script>
+    <script src="/js/substrates/player_profile.js" defer></script>
 
     <!-- ButterflyFX Analytics Substrate (GA4 + Dimensional Journey) -->
     <script src="analytics_substrate.js"></script>
@@ -49,8 +49,8 @@
     <script src="seo_substrate.js"></script>
 
     <!-- Favicon -->
-    <link rel="icon" href="/assets/masterImageFile/icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/assets/masterImageFile/logo_thumbnail.png">
+    <link rel="icon" href="/assets/images/logo/icon.png" type="image/png">
+    <link rel="apple-touch-icon" href="/assets/images/logo/logo_thumbnail.png">
 
     <!-- Fonts -->
     <link rel="stylesheet" href="../../lib/fonts/fonts.css">
@@ -74,12 +74,12 @@
     <!-- Navigation -->
     <nav>
         <a href="/" class="nav-logo">
-            <img src="/assets/masterImageFile/icon.svg" alt="KensGames"
+            <img src="/assets/images/logo/icon.png" alt="KensGames"
                 style="height:22px;width:auto;vertical-align:middle;margin-right:6px;">
             <span class="nav-logo-text">FastTrack!</span>
         </a>
         <ul class="nav-links">
-            <li><a href="/play/?game=fasttrack&mode=solo">Play</a></li>
+            <li><a href="play.html">Play</a></li>
             <li><a href="docs.html">Guide</a></li>
             <li><a href="#rules">Rules</a></li>
             <li><a href="#cards">Cards</a></li>
@@ -91,7 +91,7 @@
         <div class="nav-cta">
             <div id="kg-player"></div>
             <div id="access-status" data-access-mode="compact"></div>
-            <a href="/play/?game=fasttrack&mode=solo" class="btn btn-primary">Play Now</a>
+            <a href="play.html" class="btn btn-primary">Play Now</a>
         </div>
     </nav>
 
@@ -109,14 +109,17 @@
             join guilds, compete in tournaments, and become a champion!
         </p>
         <div class="hero-buttons">
-            <a href="/play/?game=fasttrack&mode=solo" class="btn btn-primary btn-lg">
-                🎮 SOLO
+            <a href="ai_setup.html" class="btn btn-primary btn-lg">
+                🤖 Play vs AI
             </a>
-            <a href="/play/?game=fasttrack&mode=host" class="btn btn-private btn-lg">
-                📨 INVITE
+            <a href="lobby.html?action=private" class="btn btn-private btn-lg">
+                🔒 Private Game
             </a>
-            <a href="/play/?game=fasttrack&mode=multi" class="btn btn-accent btn-lg">
-                👥 MULTI
+            <a href="lobby.html?action=join" class="btn btn-join btn-lg">
+                🎟️ Join by Code
+            </a>
+            <a href="play.html" class="btn btn-accent btn-lg">
+                🎮 Multiplayer
             </a>
         </div>
         <div class="hero-stats">
@@ -1254,8 +1257,8 @@
             ManifoldBridge.init({
                 id: 'fasttrack',
                 version: '2.1.0',
-                x: 4,   // suits (primary axis)
-                y: 13,  // ranks (quadratic axis)  →  z = 4·169 = 676
+                x: 3,
+                y: 45,
                 exposes: () => {
                     const gs = window.gameState;
                     if (!gs) return { phase: 'idle', playerCount: 0 };

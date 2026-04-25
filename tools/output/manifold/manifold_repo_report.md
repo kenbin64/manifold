@@ -42,6 +42,6 @@ Assets: 98 (GLB/GLTF: 64, PNG: 34)
 - assets/images/assembler_landing.png: 2438.4 KB win | png 2827.7 KB → atlas.gz 389.3 KB
 - assets/images/starfighter_landing.png: 2066.2 KB win | png 2393.1 KB → atlas.gz 326.8 KB
 - assets/images/assembler_lobby.png: 1968.0 KB win | png 2251.4 KB → atlas.gz 283.4 KB
-- 4dconnect/assets/images/manifold.png: 1968.8 KB win | png 2297.5 KB → atlas.gz 328.7 KB
+- 4DTicTacToe/assets/images/manifold.png: 1968.8 KB win | png 2297.5 KB → atlas.gz 328.7 KB
 
 Report JSON: tools/output/manifold/manifold_repo_report.json

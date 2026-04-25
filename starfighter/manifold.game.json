@@ -1,6 +1,6 @@
 {
   "manifold": "starfighter",
-  "name": "Starfighter",
+  "name": "StarFighter",
   "version": "1.0.0",
   "status": "production",
   "dimension": {
@@ -9,8 +9,7 @@
     "z": 60,
     "_note": "z = x*y = 2 players avg * 30 min avg = 60"
   },
-  "entry": "game.html",
-  "lobby": "lobby/",
+  "entry": "index.html",
   "substrates": {
     "core": "core.js",
     "input": "input.js",
@@ -64,7 +63,7 @@
     ]
   },
   "deploy": {
-    "target": "/var/www/kensgames.com/public/starfighter/",
+    "target": "/var/www/kensgames.com/starfighter/",
     "type": "static_with_server"
   },
   "manifold_compatibility": {
@@ -72,7 +71,7 @@
     "state_exposed": false,
     "postmessage_protocol": false,
     "todo": [
-      "Include js/manifold_bridge.js in game.html",
+      "Include js/manifold_bridge.js in index.html",
       "Emit window.__MANIFOLD__ from core.js with missionState",
       "Wire postMessage events to ManifoldBridge.emit()",
       "Expose ANPC emotion substrate through bridge"

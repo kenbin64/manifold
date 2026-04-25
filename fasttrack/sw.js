@@ -6,8 +6,8 @@
 const CACHE_NAME = 'fasttrack-v3.2.1-local-libs';
 const PRECACHE_URLS = [
   '/fasttrack/3d.html',
-  '/assets/masterImageFile/icon.svg',
-  '/assets/masterImageFile/icon.svg',
+  '/fasttrack/assets/images/ftLogo.png',
+  '/fasttrack/assets/images/icon-192.png',
   '/fasttrack/assets/images/icon-512.png',
   '/fasttrack/manifest.json',
   // Three.js and OrbitControls are now served from /lib/ — no CDN dependency
@@ -87,7 +87,7 @@ self.addEventListener('push', (event) => {
   const data = event.data.json();
   const options = {
     body: data.body || 'Your turn!',
-    icon: '/assets/masterImageFile/icon.svg',
+    icon: '/fasttrack/assets/images/icon-192.png',
     badge: '/fasttrack/assets/images/icon-72.png',
     vibrate: [200, 100, 200],
     data: { url: data.url || '/fasttrack/mobile.html' },

@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Join Game — KensGames</title>
-  <link rel="icon" href="/assets/masterImageFile/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="/assets/images/logo/icon.png" type="image/png">
   <link rel="stylesheet" href="/lib/fonts/fonts.css">
   <style>
     :root {
@@ -129,12 +129,8 @@
           const reportedPath = (d.game_lobby_path || d.game_path || '');
           const isFastTrack = (d.game_id === 'fasttrack') || (typeof reportedPath === 'string' && reportedPath.includes('/fasttrack/'));
 
-          // Use the unified /play/ page for all games — it handles ?code=
-          // and runs the proper guest-or-auth join flow. The previous
-          // /fasttrack/join.html target doesn't exist and silently lands
-          // joiners on the FastTrack landing page with no code handling.
           const rawPath = isFastTrack
-            ? `/play/?game=fasttrack`
+            ? '/fasttrack/join.html'
             : (d.game_lobby_path || d.game_path || '/lobby/');
 
           const url = new URL(rawPath, location.origin);

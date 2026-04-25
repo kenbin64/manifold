@@ -20,9 +20,6 @@ Thumbs.db
 server/kensgames.db
 server/*.db
 
-# Runtime session/lobby state — VPS only, never committed
-server/data/
-
 # Editor
 .idea/
 .vscode/settings.json
@@ -40,16 +37,10 @@ starfighter/index.src.html
 # Chomp — work in progress, not deployed
 Chomp!WallyTheCairnsCrocodileAdventure/
 starfighter/nginx_starfighter.conf
-4dconnect/assets/model/*.glb
-
-# Local-only archival snapshots of pre-stub lobby pages
-*.legacy
+4DTicTacToe/assets/models/*.glb
 
 # Electron/desktop build outputs and wrappers — not needed in GitHub
 starfighter/downloads/
 downloads/
 starfighter/electron/
 starfighter/native/
-server/*.db-shm
-server/*.db-wal
-engine/.venv/

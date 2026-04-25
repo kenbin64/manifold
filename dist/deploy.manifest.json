@@ -1,6 +1,6 @@
 {
   "_schema": "1.0",
-  "_compiled": "2026-04-24T12:11:36.234279+00:00",
+  "_compiled": "2026-04-20T03:59:47.346461+00:00",
   "portal": "kensgames-portal",
   "vps": {
     "host": "172.81.62.217",
@@ -44,7 +44,7 @@
     {
       "step": "deploy_game_fasttrack",
       "source": "fasttrack/",
-      "destination": "/var/www/kensgames.com/public/fasttrack/",
+      "destination": "/var/www/kensgames.com/fasttrack/",
       "type": "rsync",
       "excludes": [
         "*.test.js",
@@ -55,7 +55,7 @@
     {
       "step": "deploy_game_brickbreaker3d",
       "source": "brickbreaker3d/",
-      "destination": "/var/www/kensgames.com/public/brickbreaker3d/",
+      "destination": "/var/www/kensgames.com/brickbreaker3d/",
       "type": "rsync",
       "excludes": [
         "*.test.js",
@@ -64,9 +64,9 @@
       ]
     },
     {
-      "step": "deploy_game_4dconnect",
-      "source": "4dconnect/",
-      "destination": "/var/www/kensgames.com/public/4dconnect/",
+      "step": "deploy_game_4dtictactoe",
+      "source": "4dtictactoe/",
+      "destination": "/var/www/kensgames.com/4DTicTacToe/",
       "type": "rsync",
       "excludes": [
         "*.test.js",
@@ -77,7 +77,7 @@
     {
       "step": "deploy_game_starfighter",
       "source": "starfighter/",
-      "destination": "/var/www/kensgames.com/public/starfighter/",
+      "destination": "/var/www/kensgames.com/starfighter/",
       "type": "rsync",
       "excludes": [
         "*.test.js",
@@ -88,7 +88,7 @@
     {
       "step": "deploy_game_assemble",
       "source": "assemble/",
-      "destination": "/var/www/kensgames.com/public/assemble/",
+      "destination": "/var/www/kensgames.com/assemble/",
       "type": "rsync",
       "excludes": [
         "*.test.js",

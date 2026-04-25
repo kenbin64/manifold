@@ -27,11 +27,8 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
-const nodeCrypto = require('crypto');
 const AuthHandler = require('../auth-handler');
 const { manifoldData, guildsData, notifQueue } = require('../store');
-const TetracubeClient = require('../tetracube-client');
-const TETRACUBE_STRICT = typeof TetracubeClient.isStrict === 'function' && TetracubeClient.isStrict();
 
 const authHandler = new AuthHandler();
 
@@ -76,45 +73,6 @@ function isMemberSuspended(member) {
   return Date.now() < member.suspendedUntil;
 }
 
-function mirrorGuildToTetracube(guild, eventName, actorId) {
-  return TetracubeClient.dualWriteGuild(guild, {
-    event: eventName,
-    actor: actorId || 'system',
-  }).catch((err) => {
-    console.warn('[guilds] tetracube dual-write failed:', err.message);
-    return { ok: false, skipped: false, error: String(err.message || err), ts: Date.now() };
-  });
-}
-
-function strictModuleUnavailable(res) {
-  return res.status(503).json({
-    success: false,
-    error: 'Tetracube authoritative mode unavailable for guild writes',
-    detail: 'guilds module is not fully cut over to remote-authoritative transactions',
-    strict: true,
-  });
-}
-
-function digest(v) {
-  return nodeCrypto.createHash('sha256').update(JSON.stringify(v || {})).digest('hex');
-}
-
-function guildParity(memoryGuild, shadowEnvelope, remotePayload) {
-  const memoryHash = memoryGuild ? digest(memoryGuild) : null;
-  const shadowValue = shadowEnvelope && shadowEnvelope.value ? shadowEnvelope.value : null;
-  const shadowHash = shadowValue ? digest(shadowValue) : null;
-  const remoteValue = remotePayload && (remotePayload.value || remotePayload.guild) ? (remotePayload.value || remotePayload.guild) : null;
-  const remoteHash = remoteValue ? digest(remoteValue) : null;
-
-  return {
-    memoryHash,
-    shadowHash,
-    remoteHash,
-    memoryVsShadow: memoryHash && shadowHash ? memoryHash === shadowHash : null,
-    shadowVsRemote: shadowHash && remoteHash ? shadowHash === remoteHash : null,
-  };
-}
-
 // ── GET /api/guilds ──────────────────────────────────────────────────────────
 router.get('/', requireAuth, (req, res) => {
   const list = Object.values(guildsData).map(g => ({
@@ -129,69 +87,8 @@ router.get('/', requireAuth, (req, res) => {
   return res.json({ success: true, guilds: list });
 });
 
-router.get('/parity', requireAuth, async (req, res) => {
-  const reports = [];
-  for (const guild of Object.values(guildsData)) {
-    const key = `guild:${guild.guildId}`;
-    const shadow = TetracubeClient.getShadowByKey(key);
-    const writeStatus = TetracubeClient.getWriteStatus(key);
-
-    let remote = null;
-    let remoteError = null;
-    if (TetracubeClient.isEnabled()) {
-      try {
-        remote = await TetracubeClient.fetchRemoteRecord('guilds', guild.guildId, 'snapshot');
-      } catch (e) {
-        remoteError = String(e.message || e);
-      }
-    }
-
-    reports.push({
-      guildId: guild.guildId,
-      writeStatus,
-      remoteError,
-      parity: guildParity(guild, shadow, remote),
-    });
-  }
-
-  return res.json({
-    success: true,
-    tetracubeEnabled: TetracubeClient.isEnabled(),
-    count: reports.length,
-    reports,
-  });
-});
-
-router.get('/:guildId/parity', requireAuth, async (req, res) => {
-  const guild = guildsData[req.params.guildId];
-  if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
-
-  const key = `guild:${guild.guildId}`;
-  const shadow = TetracubeClient.getShadowByKey(key);
-  const writeStatus = TetracubeClient.getWriteStatus(key);
-
-  let remote = null;
-  let remoteError = null;
-  if (TetracubeClient.isEnabled()) {
-    try {
-      remote = await TetracubeClient.fetchRemoteRecord('guilds', guild.guildId, 'snapshot');
-    } catch (e) {
-      remoteError = String(e.message || e);
-    }
-  }
-
-  return res.json({
-    success: true,
-    guildId: guild.guildId,
-    writeStatus,
-    remoteError,
-    parity: guildParity(guild, shadow, remote),
-  });
-});
-
 // ── POST /api/guilds/create ──────────────────────────────────────────────────
 router.post('/create', requireAuth, (req, res) => {
-  if (TETRACUBE_STRICT) return strictModuleUnavailable(res);
   const user = getUserById(req.userId);
   if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
@@ -236,7 +133,6 @@ router.post('/create', requireAuth, (req, res) => {
 
   user.guildId = guildId;
   user.guildRole = 'guildmaster';
-  mirrorGuildToTetracube(guildsData[guildId], 'guild:create', String(req.userId));
 
   return res.status(201).json({ success: true, guildId, name: guildsData[guildId].name });
 });
@@ -282,7 +178,6 @@ router.get('/:guildId', requireAuth, (req, res) => {
 
 // ── POST /api/guilds/:guildId/join ───────────────────────────────────────────
 router.post('/:guildId/join', requireAuth, (req, res) => {
-  if (TETRACUBE_STRICT) return strictModuleUnavailable(res);
   const user = getUserById(req.userId);
   const guild = guildsData[req.params.guildId];
 
@@ -303,7 +198,6 @@ router.post('/:guildId/join', requireAuth, (req, res) => {
 
   const note = (req.body.note || '').slice(0, 200);
   guild.requests.push({ userId: req.userId, note, sentAt: Date.now() });
-  mirrorGuildToTetracube(guild, 'guild:join-request', String(req.userId));
 
   // Notify guildmaster
   addNotification(guild.masterId, { type: 'guild_join_request', guildId: guild.guildId, fromUserId: req.userId });
@@ -313,7 +207,6 @@ router.post('/:guildId/join', requireAuth, (req, res) => {
 
 // ── POST /api/guilds/:guildId/accept ─────────────────────────────────────────
 router.post('/:guildId/accept', requireAuth, (req, res) => {
-  if (TETRACUBE_STRICT) return strictModuleUnavailable(res);
   const guild = guildsData[req.params.guildId];
   if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
   if (guild.masterId !== req.userId) return res.status(403).json({ success: false, error: 'Guildmaster only' });
@@ -336,14 +229,11 @@ router.post('/:guildId/accept', requireAuth, (req, res) => {
     addNotification(userId, { type: 'guild_declined', guildId: guild.guildId, guildName: guild.name });
   }
 
-  mirrorGuildToTetracube(guild, accept ? 'guild:join-accepted' : 'guild:join-declined', String(req.userId));
-
   return res.json({ success: true });
 });
 
 // ── POST /api/guilds/:guildId/suspend ─────────────────────────────────────────
 router.post('/:guildId/suspend', requireAuth, (req, res) => {
-  if (TETRACUBE_STRICT) return strictModuleUnavailable(res);
   const guild = guildsData[req.params.guildId];
   if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
   if (guild.masterId !== req.userId) return res.status(403).json({ success: false, error: 'Guildmaster only' });
@@ -380,14 +270,11 @@ router.post('/:guildId/suspend', requireAuth, (req, res) => {
     appealable: true,
   });
 
-  mirrorGuildToTetracube(guild, 'guild:member-suspended', String(req.userId));
-
   return res.json({ success: true, message: `Member suspended (${duration})` });
 });
 
 // ── POST /api/guilds/:guildId/reinstate ──────────────────────────────────────
 router.post('/:guildId/reinstate', requireAuth, (req, res) => {
-  if (TETRACUBE_STRICT) return strictModuleUnavailable(res);
   const guild = guildsData[req.params.guildId];
   if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
   if (guild.masterId !== req.userId) return res.status(403).json({ success: false, error: 'Guildmaster only' });
@@ -403,14 +290,12 @@ router.post('/:guildId/reinstate', requireAuth, (req, res) => {
   member.appealable = false;
 
   addNotification(userId, { type: 'guild_reinstated', guildId: guild.guildId, guildName: guild.name });
-  mirrorGuildToTetracube(guild, 'guild:member-reinstated', String(req.userId));
 
   return res.json({ success: true, message: 'Member reinstated' });
 });
 
 // ── POST /api/guilds/:guildId/boot ───────────────────────────────────────────
 router.post('/:guildId/boot', requireAuth, (req, res) => {
-  if (TETRACUBE_STRICT) return strictModuleUnavailable(res);
   const guild = guildsData[req.params.guildId];
   if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
   if (guild.masterId !== req.userId) return res.status(403).json({ success: false, error: 'Guildmaster only' });
@@ -430,15 +315,12 @@ router.post('/:guildId/boot', requireAuth, (req, res) => {
     user.guildRole = null;
   }
 
-  mirrorGuildToTetracube(guild, 'guild:member-booted', String(req.userId));
-
   // No notification per spec — silent boot
   return res.json({ success: true, message: 'Member removed from guild' });
 });
 
 // ── POST /api/guilds/:guildId/leave ─────────────────────────────────────────
 router.post('/:guildId/leave', requireAuth, (req, res) => {
-  if (TETRACUBE_STRICT) return strictModuleUnavailable(res);
   const guild = guildsData[req.params.guildId];
   if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
   if (guild.masterId === req.userId) {
@@ -452,7 +334,6 @@ router.post('/:guildId/leave', requireAuth, (req, res) => {
 
   const user = getUserById(req.userId);
   if (user) { user.guildId = null; user.guildRole = null; }
-  mirrorGuildToTetracube(guild, 'guild:member-left', String(req.userId));
 
   return res.json({ success: true, message: 'Left guild' });
 });
@@ -460,7 +341,6 @@ router.post('/:guildId/leave', requireAuth, (req, res) => {
 // ── POST /api/guilds/:guildId/appeal ─────────────────────────────────────────
 // Suspended member files an appeal
 router.post('/:guildId/appeal', requireAuth, (req, res) => {
-  if (TETRACUBE_STRICT) return strictModuleUnavailable(res);
   const guild = guildsData[req.params.guildId];
   if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
 
@@ -486,7 +366,6 @@ router.post('/:guildId/appeal', requireAuth, (req, res) => {
 
   guild.appeals.push(appeal);
   member.appealId = appealId;
-  mirrorGuildToTetracube(guild, 'guild:appeal-created', String(req.userId));
 
   // Notify guildmaster
   addNotification(guild.masterId, {
@@ -511,7 +390,6 @@ router.get('/:guildId/appeals', requireAuth, (req, res) => {
 
 // ── POST /api/guilds/:guildId/appeal/:appealId/decide ────────────────────────
 router.post('/:guildId/appeal/:appealId/decide', requireAuth, (req, res) => {
-  if (TETRACUBE_STRICT) return strictModuleUnavailable(res);
   const guild = guildsData[req.params.guildId];
   if (!guild) return res.status(404).json({ success: false, error: 'Guild not found' });
   if (guild.masterId !== req.userId) return res.status(403).json({ success: false, error: 'Guildmaster only' });
@@ -553,8 +431,6 @@ router.post('/:guildId/appeal/:appealId/decide', requireAuth, (req, res) => {
       duration: member?.duration || 'unknown',
     });
   }
-
-  mirrorGuildToTetracube(guild, approve ? 'guild:appeal-approved' : 'guild:appeal-denied', String(req.userId));
 
   return res.json({ success: true, decision: appeal.status });
 });

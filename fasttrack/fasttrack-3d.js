@@ -41,58 +41,55 @@ const COLOR_NAMES = ['Yellow', 'Blue', 'Red', 'Purple', 'Orange', 'Green'];
 // Art pieces — ingested onto the manifold via ft:art RepresentationTable
 // 2 paintings per wall on all four walls.
 // Front wall (z = +ROOM_DEPTH/2) is behind the default camera but visible when orbiting.
-// File extensions are .webp (the only format actually present under
-// /assets/masterImageFile/). Earlier `.png` references 404'd in production.
 const ART_PLACEHOLDERS = [
   // ── Back wall (faces +Z, viewed from default camera position) ──
   {
-    wall: 'back', x: -300, y: 280, width: 220, height: 165, file: 'bridge.webp',
+    wall: 'back', x: -300, y: 280, width: 220, height: 165, file: 'bridge.png',
     title: 'The Bridge', artist: 'Ken Bingham', medium: 'Oil on Canvas', year: '2021',
     storeUrl: 'https://fineartamerica.com/featured/enchanted-forest-bridge-kenneth-bingham.html'
   },
   {
-    wall: 'back', x: 300, y: 280, width: 220, height: 165, file: 'chess.webp',
+    wall: 'back', x: 300, y: 280, width: 220, height: 165, file: 'chess.png',
     title: 'Two Men Playing Chess In Park', artist: 'Ken Bingham', medium: 'Acrylic on Canvas', year: '2020',
     storeUrl: 'https://fineartamerica.com/featured/two-men-playing-chess-in-park-kenneth-bingham.html'
   },
   // ── Left wall ──
   {
-    wall: 'left', x: -220, y: 260, width: 200, height: 150, file: 'DrivingTheHerd.webp',
+    wall: 'left', x: -220, y: 260, width: 200, height: 150, file: 'DrivingTheHerd.png',
     title: 'Driving The Herd', artist: 'Ken Bingham', medium: 'Oil on Canvas', year: '2019',
     storeUrl: 'https://fineartamerica.com/featured/cowboy-leading-cattle-through-desert-kenneth-bingham.html'
   },
   {
-    wall: 'left', x: 120, y: 260, width: 200, height: 150, file: 'lighthouse.webp',
+    wall: 'left', x: 120, y: 260, width: 200, height: 150, file: 'lighthouse.png',
     title: 'The Lighthouse', artist: 'Ken Bingham', medium: 'Oil on Canvas', year: '2022',
     storeUrl: 'https://fineartamerica.com/featured/lighthouse-illuminating-stormy-sea-kenneth-bingham.html'
   },
   // ── Right wall — spread apart to leave room for neon sign in center ──
   {
-    wall: 'right', x: -220, y: 260, width: 200, height: 150, file: 'parrot.webp',
+    wall: 'right', x: -220, y: 260, width: 200, height: 150, file: 'parot.png',
     title: 'The Parrot', artist: 'Ken Bingham', medium: 'Acrylic', year: '2026',
     storeUrl: 'https://fineartamerica.com/featured/tropical-paradise-with-parrot-kenneth-bingham.html'
   },
   {
-    wall: 'right', x: 280, y: 260, width: 200, height: 150, file: 'pigs.webp',
+    wall: 'right', x: 280, y: 260, width: 200, height: 150, file: 'pigs.png',
     title: 'The Pigs', artist: 'Ken Bingham', medium: 'Oil on Canvas', year: '2018',
     storeUrl: 'https://fineartamerica.com/featured/three-little-pigs-in-overalls-kenneth-bingham.html'
   },
-  // ── Front wall (orbit camera to see) — uses the same six paintings since
-  //     bear/voyage/rainedout assets aren't on the server. Re-using avoids 404s.
+  // ── Front wall (orbit camera to see) ──
   {
-    wall: 'front', x: -300, y: 280, width: 220, height: 165, file: 'bridge.webp',
-    title: 'The Bridge', artist: 'Ken Bingham', medium: 'Oil on Canvas', year: '2021',
-    storeUrl: 'https://fineartamerica.com/featured/enchanted-forest-bridge-kenneth-bingham.html'
+    wall: 'front', x: -300, y: 280, width: 220, height: 165, file: 'voyage.png',
+    title: 'The Voyage', artist: 'Ken Bingham', medium: 'Oil on Canvas', year: '2020',
+    storeUrl: 'https://fineartamerica.com/featured/ship-at-sea-near-majestic-mountain-kenneth-bingham.html'
   },
   {
-    wall: 'front', x: 0, y: 280, width: 220, height: 165, file: 'lighthouse.webp',
-    title: 'The Lighthouse', artist: 'Ken Bingham', medium: 'Oil on Canvas', year: '2022',
-    storeUrl: 'https://fineartamerica.com/featured/lighthouse-illuminating-stormy-sea-kenneth-bingham.html'
+    wall: 'front', x: 0, y: 280, width: 220, height: 165, file: 'bear.png',
+    title: 'Bear Catching Fish', artist: 'Ken Bingham', medium: 'Oil on Canvas', year: '2023',
+    storeUrl: 'https://fineartamerica.com/featured/bear-catching-fish-in-rapids-kenneth-bingham.html'
   },
   {
-    wall: 'front', x: 300, y: 280, width: 220, height: 165, file: 'pigs.webp',
-    title: 'The Pigs', artist: 'Ken Bingham', medium: 'Oil on Canvas', year: '2018',
-    storeUrl: 'https://fineartamerica.com/featured/three-little-pigs-in-overalls-kenneth-bingham.html'
+    wall: 'front', x: 300, y: 280, width: 220, height: 165, file: 'rainedout.png',
+    title: 'Rained Out', artist: 'Ken Bingham', medium: 'Watercolor', year: '2023',
+    storeUrl: 'https://fineartamerica.com/featured/baseball-player-on-rainy-field-kenneth-bingham.html'
   },
 ];
 
@@ -113,7 +110,7 @@ function ingestArt() {
       return resolve();
     }
     const dataUrl = typeof ART_DATA !== 'undefined' && ART_DATA[key];
-    const src = dataUrl || `/assets/masterImageFile/${key}`;
+    const src = dataUrl || `assets/images/art/${key}`;
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
@@ -186,66 +183,6 @@ const GameSettings = {
     }));
   }
 };
-
-// Resolve signed launch object references minted by the lobby REST endpoint.
-async function resolveLaunchObjectFromUrl() {
-  const usp = new URLSearchParams(location.search);
-  const launchId = usp.get('launch');
-  const sig = usp.get('sig');
-  if (!launchId || !sig) return null;
-
-  try {
-    const endpoint = `/ws/launch-object/${encodeURIComponent(launchId)}?sig=${encodeURIComponent(sig)}`;
-    const res = await fetch(endpoint, { method: 'GET', credentials: 'same-origin' });
-    if (!res.ok) return null;
-
-    const payload = await res.json();
-    if (!payload || payload.success !== true || !payload.launch) return null;
-    return payload.launch;
-  } catch (_) {
-    return null;
-  }
-}
-
-function buildInjectedPlayersFromLaunch(launch) {
-  if (!launch || !Array.isArray(launch.players)) return [];
-
-  const myUserId = sessionStorage.getItem('kg_my_user_id') || sessionStorage.getItem('ft_my_user_id') || '';
-  const launchPlayers = launch.players.slice(0, 4);
-  const sorted = launchPlayers.slice();
-
-  // Keep local player at index 0 so existing single-client human input path still works.
-  if (myUserId) {
-    const localIdx = sorted.findIndex((p) => String(p.user_id || '') === String(myUserId));
-    if (localIdx > 0) {
-      const local = sorted.splice(localIdx, 1)[0];
-      sorted.unshift(local);
-    }
-  }
-
-  return sorted.map((p, i) => {
-    const isAi = !!(p.is_ai || p.is_bot);
-    const isLocal = myUserId && String(p.user_id || '') === String(myUserId);
-    // Current core is single-input local; non-local humans are mirrored as bots for now.
-    const isBot = isAi || (i > 0 && !isLocal);
-    const glyph = p.avatar || p.avatar_id || (isBot ? '🤖' : '🎮');
-
-    return {
-      index: i,
-      userId: p.user_id || null,
-      isHost: !!p.is_host,
-      isBot,
-      name: p.username || (isBot ? 'Bot' : 'Player'),
-      avatarObject: {
-        id: p.avatar_id || p.user_id || `avatar-${i}`,
-        glyph,
-        image: null,
-        sprite: null,
-        metadata: { avatar_id: p.avatar_id || null }
-      }
-    };
-  });
-}
 
 // ════════════════════════════════════════════════════════════════
 // MANIFOLD AUDIO ENGINE — Procedural sound & music from z = x·y helix
@@ -1286,13 +1223,7 @@ function createBilliardRoom() {
   const WAINSCOT_TOP = 130;  // must match WAINSCOT_H below
   const brickH = ROOM_HEIGHT - WAINSCOT_TOP;  // height of brick section
   const brickTexLoader = new THREE.TextureLoader();
-  // NB: filename contains a literal space; encode to avoid a 404 in production.
-  const brickTex = brickTexLoader.load(
-    '/assets/masterImageFile/Brick%20texture.webp',
-    undefined,
-    undefined,
-    function (err) { console.warn('🧱 Brick texture failed to load:', err); }
-  );
+  const brickTex = brickTexLoader.load('assets/images/art/Brick texture.png');
   brickTex.wrapS = brickTex.wrapT = THREE.RepeatWrapping;
   brickTex.colorSpace = THREE.SRGBColorSpace;
 
@@ -1748,7 +1679,7 @@ function createBilliardRoom() {
   // ── NEON SIGN IMAGE — right wall, between the two paintings ────
   {
     const neonImgLoader = new THREE.TextureLoader();
-    const neonImgTex = neonImgLoader.load('/assets/masterImageFile/fastTrack_neon.webp');
+    const neonImgTex = neonImgLoader.load('assets/images/art/fastTrack_neon.png');
     neonImgTex.colorSpace = THREE.SRGBColorSpace;
 
     // Sign dimensions — fits the ~300 unit gap comfortably
@@ -2518,72 +2449,6 @@ function createHexBilliardTable() {
 async function init3D() {
   const container = document.getElementById('container');
 
-  function avatarToDisplay(avatarId) {
-    if (!avatarId) return '🎮';
-    if (window.KG_AVATARS && window.KG_AVATARS[avatarId]) return window.KG_AVATARS[avatarId];
-    return avatarId;
-  }
-
-  function makeAvatarX(player) {
-    const avatarId = (player && player.avatar_id) ? String(player.avatar_id) : 'person_smile';
-    return {
-      x: { id: avatarId, kind: 'avatar' },
-      y: { display: avatarToDisplay(avatarId) },
-    };
-  }
-
-  function makePlayerX(player, idx) {
-    const playerId = (player && player.user_id) ? String(player.user_id) : `slot_${idx}`;
-    return {
-      x: { id: playerId, kind: 'player' },
-      y: {
-        username: (player && player.username) ? String(player.username) : `Player ${idx + 1}`,
-        is_ai: !!(player && player.is_ai),
-        is_host: !!(player && player.is_host),
-      },
-      z: { avatar: makeAvatarX(player) },
-    };
-  }
-
-  function makeGameX(launch) {
-    const players = Array.isArray(launch && launch.players) ? launch.players : [];
-    return {
-      x: { id: String(launch && launch.session_id || ''), kind: 'game' },
-      y: {
-        game_id: String(launch && launch.game_id || 'fasttrack'),
-        code: String(launch && launch.code || ''),
-        mode: String(launch && launch.mode || 'multi'),
-      },
-      z: {
-        players: players.map((p, i) => makePlayerX(p, i)),
-      },
-    };
-  }
-
-  async function resolveLaunchObject() {
-    try {
-      const usp = new URLSearchParams(location.search);
-      let launchId = usp.get('launch') || '';
-      let sig = usp.get('sig') || '';
-
-      if ((!launchId || !sig) && sessionStorage.getItem('kg_launch_ref')) {
-        const cachedRef = JSON.parse(sessionStorage.getItem('kg_launch_ref'));
-        launchId = launchId || (cachedRef && cachedRef.launch_id) || '';
-        sig = sig || (cachedRef && cachedRef.sig) || '';
-      }
-
-      if (!launchId || !sig) return null;
-      const res = await fetch(`/ws/launch-object/${encodeURIComponent(launchId)}?sig=${encodeURIComponent(sig)}`);
-      if (!res.ok) return null;
-
-      const payload = await res.json();
-      if (!payload || payload.success !== true || !payload.launch) return null;
-      return payload.launch;
-    } catch (_) {
-      return null;
-    }
-  }
-
   // Load settings from lobby config
   GameSettings.load();
 
@@ -2684,109 +2549,23 @@ async function init3D() {
   document.addEventListener('click', resumeAudio, { once: true });
 
   // Wire game logic → 3D renderer
-  console.log('[FT-INIT] reached game-wiring block. FastTrackCore present?', !!window.FastTrackCore, 'URL:', location.search);
   if (window.FastTrackCore) {
     window.FastTrackCore.setRenderer(renderBoard3D);
 
     // ── URL params take absolute priority over localStorage config ──
-    // From the unified /play/ launcher (solo):
-    //   ?launch=1&offline=true&ai_players=N&ai_level=easy|medium|hard&music=…&sfx=…&name=…&avatar=…
-    // Legacy params still honored:
-    //   ?quickplay=1&name=…&avatar=…&difficulty=…&players=N   (players = total seats)
+    // Params written by ai_setup.html (solo vs bots) and lobby.html (multiplayer):
+    //   ?quickplay=1&name=kbingh&avatar=🍟&difficulty=normal&players=4
     const usp = new URLSearchParams(location.search);
     const storedCfg = JSON.parse(localStorage.getItem('fasttrack-lobby') || '{}');
-    const launchObject = await resolveLaunchObject();
 
-    const requestedBy = launchObject && launchObject.authorization
-      ? String(launchObject.authorization.requested_by || '')
-      : '';
-    const myUserId = sessionStorage.getItem('kg_my_user_id') || requestedBy;
+    const playerCount = Math.max(2, Math.min(4,
+      parseInt(usp.get('players') || storedCfg.playerCount || '2', 10)
+    ));
+    const humanName = decodeURIComponent(usp.get('name') || storedCfg.humanName || 'You');
+    const humanAvatar = decodeURIComponent(usp.get('avatar') || storedCfg.humanAvatar || '🎮');
+    const aiDifficulty = usp.get('difficulty') || storedCfg.aiDifficulty || 'normal';
 
-    let injectedPlayerObjects = null;
-    if (launchObject && Array.isArray(launchObject.players) && launchObject.players.length > 0) {
-      const gameX = makeGameX(launchObject);
-      window.FastTrackLaunchX = gameX;
-
-      // Russian-doll constructor payload: game x consumes player x consumes avatar x.
-      let pxPlayers = Array.isArray(gameX.z && gameX.z.players) ? gameX.z.players.slice(0, 4) : [];
-      const myIdx = pxPlayers.findIndex((px) => String(px.x && px.x.id || '') === String(myUserId || ''));
-      if (myIdx > 0) {
-        const mine = pxPlayers.splice(myIdx, 1)[0];
-        pxPlayers.unshift(mine);
-      }
-      injectedPlayerObjects = pxPlayers.map((px, idx) => {
-        const avatarNode = px && px.z ? px.z.avatar : null;
-        const glyph = avatarNode && avatarNode.y ? avatarNode.y.display : '🎮';
-        const isAi = !!(px && px.y && px.y.is_ai);
-        const isLocal = String(px && px.x && px.x.id || '') === String(myUserId || '');
-        return {
-          index: idx,
-          userId: px && px.x ? px.x.id : null,
-          isHost: !!(px && px.y && px.y.is_host),
-          // Existing local core is single-input; mirror non-local humans as bots.
-          isBot: isAi || (idx > 0 && !isLocal),
-          name: (px && px.y && px.y.username) ? px.y.username : `Player ${idx + 1}`,
-          avatarObject: {
-            id: avatarNode && avatarNode.x ? avatarNode.x.id : `avatar-${idx}`,
-            glyph,
-            image: null,
-            sprite: null,
-            metadata: { source: 'launch_object' },
-          }
-        };
-      });
-
-      // Keep compatibility with existing multiplayer readers.
-      const roster = launchObject.players.map((p) => ({
-        user_id: p.user_id,
-        username: p.username,
-        avatar: avatarToDisplay(p.avatar_id),
-        is_ai: !!p.is_ai,
-        is_host: !!p.is_host,
-      }));
-      try {
-        sessionStorage.setItem('ft_launch_object', JSON.stringify(launchObject));
-        sessionStorage.setItem('ft_session_players', JSON.stringify(roster));
-        sessionStorage.setItem('kg_session_players', JSON.stringify(roster));
-      } catch (_) { }
-    }
-
-    // Player count: prefer ai_players (count of bots; +1 for the human),
-    // then legacy `players` (total seats), then stored, then 2.
-    const aiPlayersRaw = usp.get('ai_players');
-    let playerCount;
-    if (launchObject && Array.isArray(launchObject.players) && launchObject.players.length > 0) {
-      playerCount = launchObject.players.length;
-    } else if (aiPlayersRaw !== null) {
-      const ai = parseInt(aiPlayersRaw, 10);
-      playerCount = (isFinite(ai) ? ai : 1) + 1;
-    } else {
-      playerCount = parseInt(usp.get('players') || storedCfg.playerCount || '2', 10);
-    }
-    playerCount = Math.max(2, Math.min(4, playerCount));
-    console.log('[FT-INIT] computed playerCount =', playerCount, '| ai_players raw =', aiPlayersRaw, '| storedCfg =', storedCfg);
-
-    const launchMe = launchObject && Array.isArray(launchObject.players)
-      ? launchObject.players.find((p) => String(p.user_id || '') === String(myUserId))
-      : null;
-
-    const injectedHuman = injectedPlayerObjects && injectedPlayerObjects.length > 0
-      ? injectedPlayerObjects.find((p) => !p.isBot) || injectedPlayerObjects[0]
-      : null;
-    const humanName = decodeURIComponent((injectedHuman && injectedHuman.name) || (launchMe && launchMe.username) || usp.get('name') || storedCfg.humanName || 'You');
-    const humanAvatar = decodeURIComponent((injectedHuman && injectedHuman.avatarObject && injectedHuman.avatarObject.glyph) || (launchMe && avatarToDisplay(launchMe.avatar_id)) || usp.get('avatar') || storedCfg.humanAvatar || '🎮');
-    // ai_level (medium → normal for this engine) takes precedence over legacy difficulty.
-    const aiLevelRaw = usp.get('ai_level');
-    const aiDifficulty = aiLevelRaw
-      ? (aiLevelRaw === 'medium' ? 'normal' : aiLevelRaw)
-      : (usp.get('difficulty') || storedCfg.aiDifficulty || 'normal');
-
-    const initConfig = { humanName, humanAvatar, aiDifficulty, launchObject: launchObject || null };
-    if (injectedPlayerObjects && injectedPlayerObjects.length > 0) {
-      initConfig.playerObjects = injectedPlayerObjects;
-    }
-
-    window.FastTrackCore.initGame(playerCount, initConfig);
+    window.FastTrackCore.initGame(playerCount, { humanName, humanAvatar, aiDifficulty });
     window.FastTrackCore.updateUI();
     renderBoard3D();
     console.log(`🎮 Game initialized: ${playerCount} players | human="${humanName}" ${humanAvatar} | bots=${aiDifficulty}`);
@@ -2931,8 +2710,8 @@ function _showArtOverlay(art) {
 
   // Image source: manifold ART_DATA base64, else direct file path
   const dataUrl = (typeof ART_DATA !== 'undefined') && ART_DATA[art.file];
-  document.getElementById('ago-img').src = dataUrl || `/assets/masterImageFile/${art.file}`;
-  document.getElementById('ago-title').textContent = art.title || art.file.replace(/\.(png|webp|jpg|jpeg)$/i, '');
+  document.getElementById('ago-img').src = dataUrl || `assets/images/art/${art.file}`;
+  document.getElementById('ago-title').textContent = art.title || art.file.replace('.png', '');
   document.getElementById('ago-details').textContent =
     `${art.artist || 'Unknown'}  ·  ${art.medium || ''}  ·  ${art.year || ''}`;
 

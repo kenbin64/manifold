@@ -23,7 +23,7 @@ const GameRegistryManifold = (() => {
       genre: ['board', 'strategy', 'multiplayer'],
       author: 'Ken\'s Games Team',
       version: '2.1.0',
-      entryPoint: '/play/?game=fasttrack',
+      entryPoint: '/fasttrack/lobby.html',
       icon: '/fasttrack/assets/images/ftLogo.png',
       thumbnail: '/fasttrack/assets/images/billiard_theme.png',
 
@@ -67,7 +67,7 @@ const GameRegistryManifold = (() => {
       genre: ['board', 'card', 'multiplayer'],
       author: 'Ken\'s Games Team',
       version: '1.0.0',
-      entryPoint: '/play/?game=fasttrack&mode=5card',
+      entryPoint: '/fasttrack/lobby.html?mode=5card',
       icon: '/fasttrack/assets/images/ftLogo.png',
       thumbnail: '/fasttrack/assets/images/cosmic_theme.png',
 
@@ -99,7 +99,7 @@ const GameRegistryManifold = (() => {
       author: 'Ken\'s Games Team (Zenxy Edition)',
       version: '1.0.0',
       entryPoint: '/brickbreaker3d/play.html?mode=solo',
-      icon: '/assets/masterImageFile/logo_thumbnail.svg',
+      icon: '/assets/images/logo/logo_thumbnail.png',
       thumbnail: '/brickbreaker3d/assets/images/arcade.png',
 
       manifold: {
@@ -134,7 +134,7 @@ const GameRegistryManifold = (() => {
       author: 'Ken\'s Games Team (Zenxy Edition)',
       version: '1.0.0',
       entryPoint: '/brickbreaker3d/play.html?mode=multi',
-      icon: '/assets/masterImageFile/logo_thumbnail.svg',
+      icon: '/assets/images/logo/logo_thumbnail.png',
       thumbnail: '/brickbreaker3d/assets/images/multiplayer.png',
 
       manifold: {

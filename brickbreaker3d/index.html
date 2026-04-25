@@ -6,7 +6,7 @@
     <script>
         (function () {
             var t = localStorage.getItem('kg_token');
-            if (t) { fetch('/api/auth/validate', { headers: { Authorization: 'Bearer ' + t } }).then(function (r) { if (r.ok) window.location.replace('/play/?game=brickbreaker3d'); }).catch(function () { }); }
+            if (t) { fetch('/api/auth/validate', { headers: { Authorization: 'Bearer ' + t } }).then(function (r) { if (r.ok) window.location.replace('/brickbreaker3d/lobby.html'); }).catch(function () { }); }
         })();
     </script>
     <meta charset="UTF-8">
@@ -17,7 +17,7 @@
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://kensgames.com/brickbreaker3d/">
 
-    <link rel="icon" href="/assets/masterImageFile/icon.svg" type="image/svg+xml">
+    <link rel="icon" href="/assets/images/logo/icon.png" type="image/png">
     <link rel="stylesheet" href="/lib/fonts/fonts.css">
     <link rel="stylesheet" href="/lib/arcade-theme.css">
 
@@ -131,7 +131,7 @@
 
     <nav class="arc-nav">
         <div class="arc-nav-inner">
-            <a class="arc-logo" href="/"><img src="/assets/masterImageFile/icon.svg" alt="KensGames"
+            <a class="arc-logo" href="/"><img src="/assets/images/logo/icon.png" alt="KensGames"
                     style="height:22px;width:auto;vertical-align:middle;margin-right:8px;">KENS<span>GAMES</span></a>
             <ul class="arc-nav-links">
                 <li><a href="/">Home</a></li>
@@ -140,7 +140,7 @@
             </ul>
             <div class="arc-nav-right">
                 <div id="access-status" data-access-mode="compact"></div>
-                <a class="btn btn-c" href="/play/?game=brickbreaker3d&mode=solo">Play Now</a>
+                <a class="btn btn-c" href="/brickbreaker3d/lobby.html">Play</a>
             </div>
         </div>
     </nav>
@@ -154,10 +154,8 @@
                 Play solo instantly. Sign in for matchmaker + member multiplayer.
             </p>
             <div class="cta-row">
-                <a class="btn btn-c btn-lg" href="/play/?game=brickbreaker3d&mode=solo">🎮 SOLO</a>
-                <a class="btn btn-c btn-lg" href="/play/?game=brickbreaker3d&mode=host">📨 INVITE</a>
-                <a class="btn btn-c btn-lg" href="/play/?game=brickbreaker3d&mode=multi">👥 MULTI</a>
-                <a class="btn btn-ghost btn-lg" href="/lobby/">↩ Portal</a>
+                <a class="btn btn-c btn-lg" href="/brickbreaker3d/lobby.html">Play Now</a>
+                <a class="btn btn-ghost btn-lg" href="/lobby/">Back to Portal</a>
             </div>
             <div style="margin-top:16px" class="pill">Tip: invite friends with a 6â€‘digit code in the lobby.</div>
         </section>

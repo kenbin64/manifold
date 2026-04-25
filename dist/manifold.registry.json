@@ -1,6 +1,6 @@
 {
   "_schema": "1.0",
-  "_compiled": "2026-04-24T12:11:36.233592+00:00",
+  "_compiled": "2026-04-20T03:59:47.345668+00:00",
   "portal": "kensgames-portal",
   "domain": "kensgames.com",
   "dimensions": {
@@ -15,8 +15,8 @@
       "name": "FastTrack",
       "version": "2.1.0",
       "path": "fasttrack/",
-      "entry": "game.html",
-      "lobby": "lobby/",
+      "entry": "index.html",
+      "lobby": "lobby.html",
       "status": "production",
       "dimension": {
         "x": 3,
@@ -41,7 +41,7 @@
       ],
       "bridge": "window.__MANIFOLD__",
       "deploy": {
-        "target": "/var/www/kensgames.com/public/fasttrack/",
+        "target": "/var/www/kensgames.com/fasttrack/",
         "type": "static_with_server"
       }
     },
@@ -50,8 +50,8 @@
       "name": "BrickBreaker 3D",
       "version": "1.0.0",
       "path": "brickbreaker3d/",
-      "entry": "game.html",
-      "lobby": "lobby/",
+      "entry": "index.html",
+      "lobby": "lobby.html",
       "status": "production",
       "dimension": {
         "x": 2,
@@ -71,17 +71,17 @@
       ],
       "bridge": "window.__MANIFOLD__",
       "deploy": {
-        "target": "/var/www/kensgames.com/public/brickbreaker3d/",
+        "target": "/var/www/kensgames.com/brickbreaker3d/",
         "type": "static"
       }
     },
     {
-      "id": "4dconnect",
-      "name": "4D Connect",
-      "version": "2.0.0",
-      "path": "4dconnect/",
-      "entry": "game.html",
-      "lobby": "lobby/",
+      "id": "4dtictactoe",
+      "name": "4D Tic-Tac-Toe",
+      "version": "1.0.0",
+      "path": "4DTicTacToe/",
+      "entry": "index.html",
+      "lobby": null,
       "status": "production",
       "dimension": {
         "x": 2,
@@ -89,24 +89,24 @@
         "z": 24
       },
       "substrates": [
-        "plane",
-        "height",
-        "render",
-        "_note"
+        "board",
+        "moves",
+        "win",
+        "render"
       ],
       "bridge": "window.__MANIFOLD__",
       "deploy": {
-        "target": "/var/www/kensgames.com/public/4dconnect/",
+        "target": "/var/www/kensgames.com/4DTicTacToe/",
         "type": "static"
       }
     },
     {
       "id": "starfighter",
-      "name": "Starfighter",
+      "name": "StarFighter",
       "version": "1.0.0",
       "path": "starfighter/",
-      "entry": "game.html",
-      "lobby": "lobby/",
+      "entry": "index.html",
+      "lobby": null,
       "status": "production",
       "dimension": {
         "x": 2,
@@ -133,7 +133,7 @@
       ],
       "bridge": "window.__MANIFOLD__",
       "deploy": {
-        "target": "/var/www/kensgames.com/public/starfighter/",
+        "target": "/var/www/kensgames.com/starfighter/",
         "type": "static_with_server"
       }
     },
@@ -142,8 +142,8 @@
       "name": "Assemble",
       "version": "1.0.0",
       "path": "assemble/",
-      "entry": "game.html",
-      "lobby": "lobby/",
+      "entry": "index.html",
+      "lobby": null,
       "status": "production",
       "dimension": {
         "x": 2,
@@ -156,7 +156,7 @@
       ],
       "bridge": "window.__MANIFOLD__",
       "deploy": {
-        "target": "/var/www/kensgames.com/public/assemble/",
+        "target": "/var/www/kensgames.com/assemble/",
         "type": "static"
       }
     }

@@ -9,8 +9,7 @@
     "z": 40,
     "_note": "z = x*y = 2 players avg * 20 min avg = 40"
   },
-  "entry": "game.html",
-  "lobby": "lobby/",
+  "entry": "index.html",
   "substrates": {
     "assembler": "assembler.js",
     "parts": "parts.js"
@@ -32,7 +31,7 @@
     ]
   },
   "deploy": {
-    "target": "/var/www/kensgames.com/public/assemble/",
+    "target": "/var/www/kensgames.com/assemble/",
     "type": "static"
   },
   "manifold_compatibility": {
@@ -40,7 +39,7 @@
     "state_exposed": false,
     "postmessage_protocol": false,
     "todo": [
-      "Include js/manifold_bridge.js in game.html",
+      "Include js/manifold_bridge.js in index.html",
       "Emit window.__MANIFOLD__ with assemblyState from assembler.js",
       "Wire postMessage events to ManifoldBridge.emit()"
     ]

@@ -12,7 +12,7 @@ const jwt = require('jsonwebtoken');
 
 class AuthHandler {
   constructor(sessionSecret = process.env.SESSION_SECRET || 'change-me-in-production') {
-    this.sessionSecret = process.env.JWT_SECRET || sessionSecret;
+    this.sessionSecret = sessionSecret;
     this.jwtExpiry = process.env.JWT_EXPIRY || '24h';
     this.bcryptRounds = 12;
   }
@@ -115,24 +115,22 @@ class AuthHandler {
    * Validate password strength (optional, for new registrations)
    */
   validatePassword(password) {
-    if (!password || typeof password !== 'string') {
-      return { valid: false, error: 'Password is required' };
+    if (!password) {
+      return { valid: true, warning: 'No password provided' };
     }
-    if (password.length < 8) {
-      return { valid: false, error: 'Password must be at least 8 characters' };
+
+    if (typeof password !== 'string') {
+      return { valid: false, error: 'Password must be a string' };
     }
+
+    if (password.length < 6) {
+      return { valid: false, error: 'Password must be at least 6 characters' };
+    }
+
     if (password.length > 128) {
       return { valid: false, error: 'Password too long (max 128 chars)' };
     }
-    if (!/[A-Z]/.test(password)) {
-      return { valid: false, error: 'Password must contain at least one uppercase letter (A–Z)' };
-    }
-    if (!/[0-9]/.test(password)) {
-      return { valid: false, error: 'Password must contain at least one digit (0–9)' };
-    }
-    if (!/[!#$_]/.test(password)) {
-      return { valid: false, error: 'Password must contain at least one special character (!  #  $  _)' };
-    }
+
     return { valid: true };
   }
 

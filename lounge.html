@@ -7,7 +7,7 @@
     <title>🎭 The Lounge - KensGames</title>
     <meta name="description"
         content="Multiplayer game lobbies, real-time matchmaking, and global leaderboards on KensGames">
-    <link rel="icon" href="/assets/masterImageFile/icon.svg" type="image/svg+xml">
+    <link rel="icon" href="/assets/images/logo/icon.png" type="image/png">
     <script>if (localStorage.getItem('kg_token')) { window.location.replace('/portal.html'); }</script>
     <link rel="stylesheet" href="../../../lib/fonts/fonts.css">
 
@@ -388,8 +388,8 @@
         }
     </style>
     <script src="/js/access_status.js" defer></script>
-    <script src="/js/substrates/avatar_picker.js?v=20260424" defer></script>
-    <script src="/js/substrates/player_profile.js?v=20260424" defer></script>
+    <script src="/js/substrates/avatar_picker.js" defer></script>
+    <script src="/js/substrates/player_profile.js" defer></script>
     <script src="/js/analytics.js"></script>
 </head>
 
@@ -398,7 +398,7 @@
 
     <!-- Navigation -->
     <nav>
-        <a href="/" class="logo"><img src="/assets/masterImageFile/icon.svg" alt="KensGames"
+        <a href="/" class="logo"><img src="/assets/images/logo/icon.png" alt="KensGames"
                 style="height:22px;width:auto;vertical-align:middle;margin-right:8px;">KENSGAMES</a>
         <div class="nav-links">
             <a href="/">🎮 Home</a>
@@ -593,7 +593,7 @@
             localStorage.removeItem('kg_display_name');
             localStorage.removeItem('kg_avatar');
             sessionStorage.removeItem('user_session');
-            window.location.href = '/login/';
+            window.location.href = '/cdn-cgi/access/logout?redirect=' + encodeURIComponent('/login/');
         }
 
 

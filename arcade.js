@@ -9,11 +9,11 @@ const LOBBY_WS = location.protocol === 'https:'
 
 // Fallback game table — overwritten at runtime by loadRegistry()
 const GAMES = {
-    fasttrack: { title: 'FastTrack', url: '/play/?game=fasttrack', multiplayer: true },
-    brickbreaker3d: { title: 'BrickBreaker 3D', url: '/play/?game=brickbreaker3d', multiplayer: true },
-    starfighter: { title: 'Starfighter', url: '/play/?game=starfighter', multiplayer: false },
-    '4dconnect': { title: '4D Connect', url: '/play/?game=4dconnect', multiplayer: true },
-    assemble: { title: 'Assemble', url: '/play/?game=assemble', multiplayer: false },
+    fasttrack: { title: 'FastTrack', url: '/fasttrack/lobby.html', multiplayer: true },
+    brickbreaker3d: { title: 'BrickBreaker 3D', url: '/brickbreaker3d/index.html', multiplayer: true },
+    starfighter: { title: 'StarFighter', url: '/starfighter/index.html', multiplayer: false },
+    '4dtictactoe': { title: '4D TicTacToe', url: '/4DTicTacToe/index.html', multiplayer: true },
+    assemble: { title: 'Assemble', url: '/assemble/index.html', multiplayer: false },
 };
 
 // ── MANIFOLD REGISTRY ─────────────────────────────────────────
@@ -147,7 +147,7 @@ function signOut() {
     updateAuthButtons();
     updateUI();
     sendWS({ type: 'logout' });
-    window.location.href = '/login/';
+    window.location.href = 'https://kensgames.com/cdn-cgi/access/logout?redirectUrl=https://kensgames.com/';
 }
 
 function updateAuthButtons() {
@@ -218,7 +218,7 @@ function playBrickBreaker() {
 
 // Fast Track — always go to the billiard lobby
 function playFastTrack() {
-    window.location.href = '/play/?game=fasttrack';
+    window.location.href = '/fasttrack/lobby.html';
 }
 
 function hideFTGuest() {
@@ -227,7 +227,7 @@ function hideFTGuest() {
 }
 
 function playFastTrackAI() {
-    window.location.href = '/play/?game=fasttrack';
+    window.location.href = '/fasttrack/lobby.html';
 }
 
 // ── GAME LOBBY ACTIONS ───────────────────────────────────────

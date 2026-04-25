@@ -248,17 +248,7 @@ const KGPlayerProfile = (() => {
     if (!el) return;
 
     const required = String(el.dataset.profileRequired || '').toLowerCase() === 'true';
-
-    // Landing pages embed #kg-player just to receive a badge IF the user is
-    // already signed in. They must NEVER pop the avatar/name picker on entry —
-    // anyone can browse kensgames.com without an account. Only force the
-    // picker when the page explicitly opts in via data-profile-required="true".
-    if (!required) {
-      if (hasName() || hasAvatar()) renderBadge(el);
-      return;
-    }
-
-    ensure(true, () => {
+    ensure(required, () => {
       renderBadge(el);
     });
   }

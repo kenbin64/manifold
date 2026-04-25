@@ -1,5 +1,6 @@
 /**
- * KensGames - Game Landing Shared Logic
+ * ═══════════════════════════════════════════════════════════════════════════
+ * KensGames — Game Landing Shared Logic
  * window.KG_LANDING
  *
  * Include on every game landing page (index.html).
@@ -8,7 +9,8 @@
  * Usage:
  *   <script src="/js/substrates/game_session_substrate.js"></script>
  *   <script src="/js/game_landing.js"></script>
- *   <script> KG_LANDING.init('fasttrack', '/play/?game=fasttrack'); </script>
+ *   <script> KG_LANDING.init('fasttrack', '/fasttrack/lobby.html'); </script>
+ * ═══════════════════════════════════════════════════════════════════════════
  */
 (function (global) {
   'use strict';
@@ -18,157 +20,55 @@
   let _gameId = null;
   let _lobbyPath = null;
 
-  // -- init ------------------------------------------------------------------
+  // ── init ─────────────────────────────────────────────────────────────────
 
   async function init(gameId, lobbyPath) {
     _gameId = gameId;
     _lobbyPath = lobbyPath;
 
     const token = localStorage.getItem('kg_token');
-    if (!token) {
-      _showGuestCTAs();
-      return;
-    }
+    if (!token) return; // guest / not logged in — stay on landing page
 
     try {
       const r = await fetch(`${API}/auth/validate`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (r.ok) {
-        _showAuthCTAs();
-      } else {
-        localStorage.removeItem('kg_token');
-        _showGuestCTAs();
+        // Logged-in user — send straight to lobby
+        window.location.replace(lobbyPath);
       }
     } catch {
-      _showGuestCTAs();
+      // Network error — stay on landing page
     }
   }
 
-  // -- CTA injection ---------------------------------------------------------
-  // Replaces .hero-ctas / #hero-ctas content based on auth state.
-
-  function _showAuthCTAs() {
-    const container = document.getElementById('hero-ctas') || document.querySelector('.hero-ctas');
-    if (!container) return;
-    container.innerHTML = `
-      <button class="cta-primary" id="solo-btn" onclick="KG_LANDING.playSolo(this)">\u25b6 PLAY SOLO</button>
-      <button class="cta-secondary" onclick="KG_LANDING.playWithBots(3, this)">\ud83e\udd16 VS 3 BOTS</button>
-      <button class="cta-secondary" onclick="KG_LANDING.createPrivate(this)">\ud83d\udd17 PRIVATE GAME</button>
-      <button class="cta-secondary" onclick="KG_LANDING.createPublic(this)">\ud83c\udf10 PUBLIC GAME</button>
-    `;
-  }
-
-  function _showGuestCTAs() {
-    const container = document.getElementById('hero-ctas') || document.querySelector('.hero-ctas');
-    if (!container) return;
-    container.innerHTML = `
-      <button class="cta-primary" id="solo-btn" onclick="KG_LANDING.playSolo(this)">\u25b6 PLAY SOLO</button>
-      <a href="/login/index.html" class="cta-secondary">SIGN IN FOR MULTIPLAYER</a>
-    `;
-  }
-
-  // -- solo (1 bot) ----------------------------------------------------------
+  // ── solo play ────────────────────────────────────────────────────────────
 
   async function playSolo(btnEl) {
     if (!_gameId) return;
-    _setBusy(btnEl, 'Starting\u2026');
+    if (btnEl) { btnEl.disabled = true; btnEl.textContent = 'Starting…'; }
     try {
       const d = await KG_SESSION.create(_gameId, 'solo', 1);
-      if (d.gameUrl) { window.location.href = d.gameUrl; return; }
-      throw new Error('No game URL returned');
-    } catch (err) {
-      _clearBusy(btnEl, '\u25b6 PLAY SOLO');
-      _showError(err.message || 'Could not start game');
-    }
-  }
-
-  // -- solo with N bots ------------------------------------------------------
-
-  async function playWithBots(bots, btnEl) {
-    if (!_gameId) return;
-    if (!KG_SESSION.isLoggedIn()) { window.location.href = '/login/index.html'; return; }
-    const label = `\ud83e\udd16 VS ${bots} BOTS`;
-    _setBusy(btnEl, 'Starting\u2026');
-    try {
-      const d = await KG_SESSION.create(_gameId, 'solo', bots);
-      if (d.gameUrl) { window.location.href = d.gameUrl; return; }
-      throw new Error('No game URL returned');
-    } catch (err) {
-      _clearBusy(btnEl, label);
-      _showError(err.message || 'Could not start game');
-    }
-  }
-
-  // -- create private game (generates invite code -> lobby) ------------------
-
-  async function createPrivate(btnEl) {
-    if (!_gameId) return;
-    if (!KG_SESSION.isLoggedIn()) { window.location.href = '/login/index.html'; return; }
-    _setBusy(btnEl, 'Creating\u2026');
-    try {
-      const d = await KG_SESSION.create(_gameId, 'private', 0);
-      if (d.sessionId) {
-        window.location.href = _appendQuery(_lobbyPath, 'session', d.sessionId);
-      } else if (d.inviteUrl) {
-        window.location.href = d.inviteUrl;
+      if (d.gameUrl) {
+        window.location.href = d.gameUrl;
       } else {
-        throw new Error('No session returned');
+        throw new Error('No game URL returned');
       }
     } catch (err) {
-      _clearBusy(btnEl, '\ud83d\udd17 PRIVATE GAME');
-      _showError(err.message || 'Could not create game');
+      if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Play Solo (1 Bot)'; }
+      _showError(err.message || 'Could not start solo game');
     }
   }
 
-  // -- create public game ----------------------------------------------------
-
-  async function createPublic(btnEl) {
-    if (!_gameId) return;
-    if (!KG_SESSION.isLoggedIn()) { window.location.href = '/login/index.html'; return; }
-    _setBusy(btnEl, 'Creating\u2026');
-    try {
-      const d = await KG_SESSION.create(_gameId, 'public', 0);
-      if (d.sessionId) {
-        window.location.href = _appendQuery(_lobbyPath, 'session', d.sessionId);
-      } else if (d.inviteUrl) {
-        window.location.href = d.inviteUrl;
-      } else {
-        throw new Error('No session returned');
-      }
-    } catch (err) {
-      _clearBusy(btnEl, '\ud83c\udf10 PUBLIC GAME');
-      _showError(err.message || 'Could not create game');
-    }
-  }
-
-  // -- join via invite code --------------------------------------------------
+  // ── invite code join ─────────────────────────────────────────────────────
 
   function openInviteJoin(code) {
     if (!code || !code.trim()) { _showError('Enter an invite code'); return; }
     const game = _gameId || '';
-    window.location.href = `/play/?game=${encodeURIComponent(game)}&code=${encodeURIComponent(code.trim().toUpperCase())}`;
+    window.location.href = `/invite/?code=${encodeURIComponent(code.trim().toUpperCase())}&game=${encodeURIComponent(game)}`;
   }
 
-  // -- helpers ---------------------------------------------------------------
-
-  function _setBusy(btn, text) {
-    if (!btn) return;
-    btn.disabled = true;
-    btn._origText = btn.textContent;
-    btn.textContent = text;
-  }
-
-  function _clearBusy(btn, fallback) {
-    if (!btn) return;
-    btn.disabled = false;
-    btn.textContent = btn._origText || fallback || 'RETRY';
-  }
-
-  function _appendQuery(url, key, value) {
-    const sep = url.indexOf('?') === -1 ? '?' : '&';
-    return `${url}${sep}${key}=${encodeURIComponent(value)}`;
-  }
+  // ── helpers ──────────────────────────────────────────────────────────────
 
   function _showError(msg) {
     let el = document.getElementById('kg-landing-err');
@@ -180,10 +80,10 @@
     }
     el.textContent = msg;
     el.style.display = 'block';
-    setTimeout(() => { el.style.display = 'none'; }, 5000);
+    setTimeout(() => { el.style.display = 'none'; }, 4000);
   }
 
-  // -- expose ----------------------------------------------------------------
+  // ── expose ───────────────────────────────────────────────────────────────
 
-  global.KG_LANDING = { init, playSolo, playWithBots, createPrivate, createPublic, openInviteJoin };
+  global.KG_LANDING = { init, playSolo, openInviteJoin };
 })(window);

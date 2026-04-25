@@ -36,8 +36,6 @@ The entry point for VPS post-deploy is `AGENTS.md` (Helix reads it automatically
 | Universal access | `z = x * y` — every game must satisfy this |
 | Recursion scope | Between dimensions only, never within |
 | Bridge protocol | Every deployed game must expose `window.__MANIFOLD__` |
-| Single substrate | All systems (logic, UI, audio, AI) read from `Manifold.sample()` |
-| Derived fields | `f1 = x·y` (density), `f2 = x·y²` (intensity), `G` (Schwarz Diamond field) |
 
 **If `z ≠ x*y` for any game, stop. Do not proceed.**
 
@@ -51,7 +49,6 @@ The entry point for VPS post-deploy is `AGENTS.md` (Helix reads it automatically
 | `manifold.portal.json` | Root portal config — source of truth for all games |
 | `*/manifold.game.json` | Per-game manifold descriptor (one per game directory) |
 | `js/manifold_bridge.js` | Shared browser bridge — included by every game |
-| `js/manifold_sample.js` | Unified `Manifold.sample(ctx)` API — load **before** bridge; all substrates read from this |
 | `js/kg-session.js` | Shared auth/session module — included by every authenticated page |
 | `dist/manifold.registry.json` | Compiler output — portal reads this at runtime |
 | `dist/deploy.manifest.json` | Compiler output — Helix AI reads this on VPS |
@@ -96,7 +93,7 @@ python3 engine/manifold_compiler.py
   ✓ portal config: kensgames-portal v1.0.0
   ✓ FastTrack (2.1.0)  z=135
   ✓ BrickBreaker 3D (1.0.0)  z=44
-  ✓ 4D Connect (1.0.0)  z=24
+  ✓ 4D Tic-Tac-Toe (1.0.0)  z=24
   ✓ StarFighter (1.0.0)  z=60
   ✓ Assemble (1.0.0)  z=40
 
@@ -138,7 +135,7 @@ All 5 game HTML entry points must include `manifold_bridge.js`:
 
 ```bash
 # Windows PowerShell
-@("4dconnect","brickbreaker3d","starfighter","fasttrack","assemble") | ForEach-Object {
+@("4DTicTacToe","brickbreaker3d","starfighter","fasttrack","assemble") | ForEach-Object {
   $f = "$_\index.html"
   $c = Get-Content $f -Raw
   $tag = $c -match "manifold_bridge\.js"
@@ -147,7 +144,7 @@ All 5 game HTML entry points must include `manifold_bridge.js`:
 }
 
 # Linux / macOS
-for game in 4dconnect brickbreaker3d starfighter fasttrack assemble; do
+for game in 4DTicTacToe brickbreaker3d starfighter fasttrack assemble; do
   tag=$(grep -l "manifold_bridge.js" $game/index.html 2>/dev/null && echo "OK" || echo "MISSING")
   echo "$game  tag=$tag"
 done
@@ -160,7 +157,6 @@ All games must show `tag=True` (or `tag=OK`).
 ```bash
 # Check any JS files you modified
 node --check arcade.js
-node --check js/manifold_sample.js
 node --check js/manifold_bridge.js
 node --check js/kg-session.js
 node --check brickbreaker3d/game.js
@@ -186,7 +182,7 @@ is **not** a public landing page. Verify it is included where needed:
 
 - `portal.html` must have `data-kg-no-init="true"` on `<body>` (portal manages its own auth flow; kg-session.js only provides `window.KG_AVATARS`).
 - `player/setup.html` and `player/index.html` rely on kg-session.js for auth gating.
-- Game HTML files (`fasttrack/`, `4dconnect/`, etc.) may include kg-session.js for the player chip and `KGSession.musicEnabled` / `KGSession.soundEnabled` controls.
+- Game HTML files (`fasttrack/`, `4DTicTacToe/`, etc.) may include kg-session.js for the player chip and `KGSession.musicEnabled` / `KGSession.soundEnabled` controls.
 
 ### Step 6 — Commit and Push
 
@@ -261,7 +257,6 @@ py -3.12 engine/manifold_compiler.py --validate-only
 | `dist/` missing | Create it: `mkdir dist` then recompile |
 | `node --check` fails | Fix syntax before committing |
 | Bridge tag missing from a game | Add `<script src="/js/manifold_bridge.js"></script>` to the game's HTML |
-| `manifold_sample.js` not loaded before bridge | Move `<script src="/js/manifold_sample.js"></script>` above `manifold_bridge.js` |
 | `kg-session.js` missing from authenticated page | Add `<script src="/js/kg-session.js"></script>` to `<head>` |
 | `portal.html` shows double player chip | Ensure `<body data-kg-no-init="true">` is set on portal.html |
 | `better-sqlite3` build fails on VPS | Ensure Node.js version matches; try `npm rebuild better-sqlite3` |
@@ -278,7 +273,7 @@ py -3.12 engine/manifold_compiler.py --validate-only
 |---------|-----------|------------|
 | `fasttrack` | x=3 y=45 z=135 | `/fasttrack/portal.html` |
 | `brickbreaker3d` | x=2 y=22 z=44 | `/brickbreaker3d/lobby.html` |
-| `4dconnect` | x=2 y=12 z=24 | `/4dconnect/lobby.html` |
+| `4dtictactoe` | x=2 y=12 z=24 | `/4DTicTacToe/lobby.html` |
 | `starfighter` | x=2 y=30 z=60 | `/starfighter/lobby.html` |
 | `assemble` | x=2 y=20 z=40 | `/assemble/lobby.html` |
 
@@ -333,83 +328,5 @@ To add a new game:
 
 ---
 
-## 12. Manifold.sample() — Unified Substrate API
-
-`js/manifold_sample.js` is the single entry point all systems use instead of separate config trees.
-
-### Load order (in every game HTML)
-
-```html
-<script src="/js/manifold_sample.js"></script>   <!-- must be first -->
-<script src="/js/manifold_bridge.js"></script>
-```
-
-### Wire once at game init
-
-```javascript
-// Subscribe all substrates to the shared sample stream
-Manifold.subscribe(function(s) {
-  // Logic — spawn rates, difficulty, feature flags
-  spawnSystem.setRate(s.logic.spawnRate);
-  aiTree.setDifficulty(s.logic.difficulty);
-
-  // UI/UX — layout, animation speed, color theme
-  uiLayer.setDensity(s.ui.layoutDensity);
-  animator.setSpeed(s.ui.animSpeed);
-  theme.apply(s.ui.colorScheme);
-
-  // Audio — music mode, SFX density, volume
-  musicMixer.setMode(s.audio.musicMode);
-  sfxLayer.setDensity(s.audio.sfxDensity);
-
-  // AI routing — pick model size, set temperature, cache hint
-  aiRouter.configure(s.ai);
-});
-```
-
-### Drive from game loop or context change
-
-```javascript
-// Each frame (or each turn, screen transition, major action):
-Manifold.update({
-  x: turnNumber / maxTurns,   // progression 0..1
-  y: boardTension,            // intensity 0..1
-});
-```
-
-### Gyroid lattice — tune without touching substrate code
-
-Add a node to the lattice to create a new behavioral region:
-
-```javascript
-// "Boss fight" zone — fires at peak x=0.8, y=0.9
-Manifold.lattice.push({
-  x: 0.8, y: 0.9,
-  region: 'boss', intensity: 0.95, theme: 'danger',
-  aiMode: 'aggressive', spawnRate: 0.95, musicMode: 'climax'
-});
-```
-
-### ManifoldSample fields
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `x`, `y` | float 0..1 | Input coordinates (progression, intensity) |
-| `z` | float | Derived: `x·y²` |
-| `f1` | float | `x·y` — interaction density |
-| `f2` | float | `x·y²` — non-linear intensity |
-| `G` | float [−1,1] | Schwarz Diamond field value |
-| `surfaceProximity` | float 0..1 | `1 − |G|` — 1 = on surface (high priority) |
-| `region` | string | Nearest lattice region name |
-| `intensity` | float 0..1 | IDW-blended intensity |
-| `theme` | string | Color/mood theme |
-| `aiMode` | string | AI routing mode |
-| `logic` | object | `{ spawnRate, difficulty, featureFlags, forkPriority }` |
-| `ui` | object | `{ layoutDensity, animSpeed, colorScheme, glowIntensity }` |
-| `audio` | object | `{ musicMode, sfxDensity, notifyStyle, masterVolume }` |
-| `ai` | object | `{ modelSize, temperature, cacheHint, maxTokens, promptStyle }` |
-
----
-
 *Axiom: z = xy · Everything is a point in a higher dimension and a whole in a lower.*
-*Directive version: 2.1 · kensgames.com · Updated April 2026*
+*Directive version: 2.0 · kensgames.com · Updated April 2026*

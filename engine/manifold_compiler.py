@@ -18,17 +18,12 @@ Usage
     python engine/manifold_compiler.py --validate-only        # validate, no emit
     python engine/manifold_compiler.py --game starfighter     # single game
     python engine/manifold_compiler.py --dry-run              # print plan only
-    python engine/manifold_compiler.py --push                 # compile + register with tetracubedb.com
-    python engine/manifold_compiler.py --push-only            # skip compile; push dist/tetracube.ingest.json
 """
 
 import argparse
 import hashlib
 import json
-import os
 import sys
-import urllib.error
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -41,11 +36,6 @@ PORTAL_CFG  = ROOT / "manifold.portal.json"
 DIST_DIR    = ROOT / "dist"
 REGISTRY    = DIST_DIR / "manifold.registry.json"
 DEPLOY_MAN  = DIST_DIR / "deploy.manifest.json"
-TETRA_INGEST = DIST_DIR / "tetracube.ingest.json"
-
-# tetracubedb repo lives alongside kensgames-portal at /home/butterfly/apps/
-TETRA_ENTITIES_DIR = (ROOT / ".." / ".." / "tetracubedb" / "public" / "entities").resolve()
-TETRA_APP_MANIFEST = (ROOT / ".." / ".." / "tetracubedb" / "public" / "manifold.app.json").resolve()
 
 SCHEMA_VERSION = "1.0"
 
@@ -289,131 +279,6 @@ def build_deploy_manifest(portal: dict, game_specs: list[dict]) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# TetracubeDB ingest builder + pusher
-# ---------------------------------------------------------------------------
-
-TETRA_NAMESPACE = os.environ.get("TETRACUBE_NS", "kensgames")
-TETRA_TABLE     = os.environ.get("TETRACUBE_TABLE", "games.registry")
-
-
-def build_tetracube_ingest(portal: dict, game_specs: list[dict]) -> dict:
-    """
-    Build the tetracubedb ingest plan.  For each game registered in the portal
-    we locate its authoritative entity manifest in the tetracubedb substrate
-    (tetracubedb/public/entities/<id>/manifold.entity.json) and stage it as a
-    cell at <ns>/<table>/<id>/manifest.  The deploy script POSTs these cells
-    to the live tetracubedb API so the games.registry reflects the compile.
-    """
-    cells: list[dict] = []
-    missing: list[str] = []
-
-    for spec in game_specs:
-        gid = spec["manifold"]
-        entity_path = TETRA_ENTITIES_DIR / gid / "manifold.entity.json"
-        if not entity_path.exists():
-            missing.append(f"{gid} → {entity_path}")
-            continue
-        entity = load_json(entity_path)
-        cells.append({
-            "row":   gid,
-            "col":   "manifest",
-            "value": entity,
-        })
-
-    # App-level manifest (optional — tetracubedb root config)
-    app_cells = []
-    if TETRA_APP_MANIFEST.exists():
-        app_cells.append({
-            "row":   "tetracubedb",
-            "col":   "manifold",
-            "value": load_json(TETRA_APP_MANIFEST),
-        })
-
-    if missing:
-        for m in missing:
-            print(WARN(f"  ⚠  tetracubedb entity manifest missing: {m}"))
-
-    return {
-        "_schema":   SCHEMA_VERSION,
-        "_compiled": datetime.now(timezone.utc).isoformat(),
-        "namespace": TETRA_NAMESPACE,
-        "table":     TETRA_TABLE,
-        "cells":     cells,
-        "app_table": "app.registry",
-        "app_cells": app_cells,
-    }
-
-
-def push_tetracube_ingest(ingest: dict | None = None) -> bool:
-    """
-    POST each cell in dist/tetracube.ingest.json to the tetracubedb /v1/cell API.
-    Reads creds from environment:
-        TETRACUBE_URL         (default: https://tetracubedb.com)
-        TETRACUBE_CLIENT_ID   (required)
-        TETRACUBE_API_KEY     (required)
-        TETRACUBE_NS          (default: kensgames)
-    Graceful no-op when creds are absent so deploys don't fail when the
-    registration channel isn't configured.
-    """
-    if ingest is None:
-        if not TETRA_INGEST.exists():
-            print(WARN(f"  ⚠  tetracube.ingest.json not found; run compile first"))
-            return False
-        ingest = load_json(TETRA_INGEST)
-
-    client_id = os.environ.get("TETRACUBE_CLIENT_ID", "").strip()
-    api_key   = os.environ.get("TETRACUBE_API_KEY", "").strip()
-    base_url  = os.environ.get("TETRACUBE_URL", "https://tetracubedb.com").rstrip("/")
-    ns        = os.environ.get("TETRACUBE_NS", ingest.get("namespace", TETRA_NAMESPACE))
-
-    if not client_id or not api_key:
-        print(WARN("  ⚠  TETRACUBE_CLIENT_ID / TETRACUBE_API_KEY not set — skipping registration"))
-        print(DIM( "     (games were compiled but not pushed to tetracubedb.com)"))
-        return True
-
-    headers = {
-        "Authorization": f"Bearer {client_id}:{api_key}",
-        "Content-Type":  "application/json",
-    }
-
-    def post_cell(table: str, row: str, col: str, value: dict) -> bool:
-        url = f"{base_url}/v1/cell/{ns}/{table}/{row}/{col}"
-        body = json.dumps({"value": value}).encode("utf-8")
-        req = urllib.request.Request(url, data=body, headers=headers, method="POST")
-        try:
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                resp.read()
-                return 200 <= resp.status < 300
-        except urllib.error.HTTPError as e:
-            print(ERR(f"    ✗ {row}/{col} → HTTP {e.code}: {e.reason}"))
-        except urllib.error.URLError as e:
-            print(ERR(f"    ✗ {row}/{col} → {e.reason}"))
-        except Exception as e:
-            print(ERR(f"    ✗ {row}/{col} → {e}"))
-        return False
-
-    print(HEAD(f"\n  Ingesting into tetracubedb @ {base_url}  (ns={ns})"))
-    ok_count = 0
-    fail_count = 0
-    for cell in ingest.get("cells", []):
-        if post_cell(ingest.get("table", TETRA_TABLE), cell["row"], cell["col"], cell["value"]):
-            print(OK(f"    ✓ {ingest.get('table')}/{cell['row']}/{cell['col']}"))
-            ok_count += 1
-        else:
-            fail_count += 1
-
-    for cell in ingest.get("app_cells", []):
-        if post_cell(ingest.get("app_table", "app.registry"), cell["row"], cell["col"], cell["value"]):
-            print(OK(f"    ✓ {ingest.get('app_table')}/{cell['row']}/{cell['col']}"))
-            ok_count += 1
-        else:
-            fail_count += 1
-
-    print(OK(f"  {ok_count} registered") + (ERR(f" · {fail_count} failed") if fail_count else ""))
-    return fail_count == 0
-
-
-# ---------------------------------------------------------------------------
 # Main compiler entry point
 # ---------------------------------------------------------------------------
 
@@ -488,9 +353,6 @@ def compile_portal(
     manifest = build_deploy_manifest(portal, game_specs)
     save_json(DEPLOY_MAN, manifest)
 
-    ingest = build_tetracube_ingest(portal, game_specs)
-    save_json(TETRA_INGEST, ingest)
-
     print(OK(f"\n  Compilation complete — {len(game_specs)} games registered.\n"))
     return True
 
@@ -507,20 +369,11 @@ if __name__ == "__main__":
                         help="Compile / validate a single game by id")
     parser.add_argument("--dry-run", action="store_true",
                         help="Show what would be emitted without writing files")
-    parser.add_argument("--push", action="store_true",
-                        help="Compile, then push ingest to tetracubedb.com")
-    parser.add_argument("--push-only", action="store_true",
-                        help="Skip compile; push existing dist/tetracube.ingest.json")
     args = parser.parse_args()
-
-    if args.push_only:
-        sys.exit(0 if push_tetracube_ingest() else 1)
 
     success = compile_portal(
         validate_only=args.validate_only,
         game_filter=args.game,
         dry_run=args.dry_run,
     )
-    if success and args.push and not (args.validate_only or args.dry_run):
-        success = push_tetracube_ingest()
     sys.exit(0 if success else 1)

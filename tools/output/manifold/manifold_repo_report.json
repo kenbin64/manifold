@@ -205,11 +205,11 @@
       "timingMs": 0
     },
     {
-      "path": "4dconnect/assets/images/manifold.png",
+      "path": "4DTicTacToe/assets/images/manifold.png",
       "bytes": 2352608,
       "width": 1536,
       "height": 1024,
-      "atlasPath": "tools/output/manifold/4dconnect/assets/images/manifold.png.imgatlas.json",
+      "atlasPath": "tools/output/manifold/4DTicTacToe/assets/images/manifold.png.imgatlas.json",
       "atlasBytes": 953702,
       "atlasGzipBytes": 336594,
       "params": {
@@ -913,10 +913,10 @@
       "timingMs": 0
     },
     {
-      "path": "4dconnect/assets/models/connect4.glb",
+      "path": "4DTicTacToe/assets/models/connect4.glb",
       "bytes": 28732436,
       "gzipBytes": 6947703,
-      "atlasPath": "tools/output/manifold/4dconnect/assets/models/connect4.glb.atlas.json",
+      "atlasPath": "tools/output/manifold/4DTicTacToe/assets/models/connect4.glb.atlas.json",
       "atlasBytes": 390753,
       "atlasGzipBytes": 67932,
       "params": {
@@ -1043,10 +1043,10 @@
       "timingMs": 0
     },
     {
-      "path": "4dconnect/assets/models/jupiter.glb",
+      "path": "4DTicTacToe/assets/models/jupiter.glb",
       "bytes": 3558884,
       "gzipBytes": 3190500,
-      "atlasPath": "tools/output/manifold/4dconnect/assets/models/jupiter.glb.atlas.json",
+      "atlasPath": "tools/output/manifold/4DTicTacToe/assets/models/jupiter.glb.atlas.json",
       "atlasBytes": 4932,
       "atlasGzipBytes": 1153,
       "params": {

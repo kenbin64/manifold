@@ -3,15 +3,12 @@
 
 <head>
   <script>
-    (function () { var t = localStorage.getItem('kg_token'); if (t) { fetch('/api/auth/validate', { headers: { Authorization: 'Bearer ' + t } }).then(function (r) { if (r.ok) window.location.replace('/play/?game=assemble'); }).catch(function () { }); } })();
+    (function () { var t = localStorage.getItem('kg_token'); if (t) { fetch('/api/auth/validate', { headers: { Authorization: 'Bearer ' + t } }).then(function (r) { if (r.ok) window.location.replace('/assemble/lobby.html'); }).catch(function () { }); } })();
   </script>
-  <!-- Auth enforcement: sign-in required (invite-code guests allowed) -->
-  <script src="/js/substrates/profile_gate.js"></script>
-  <script>KG_GATE.require({ allowGuest: true });</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Assemble Ã¢â‚¬â€ Build Anything | KensGames</title>
-  <link rel="icon" href="/assets/masterImageFile/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="/assets/images/logo/icon.png" type="image/png">
   <link rel="stylesheet" href="/lib/fonts/fonts.css">
   <style>
     :root {
@@ -581,13 +578,13 @@
 <body>
 
   <nav class="nav">
-    <a href="/" class="nav-logo"><img src="/assets/masterImageFile/icon.svg" alt="KensGames"
+    <a href="/" class="nav-logo"><img src="/assets/images/logo/icon.png" alt="KensGames"
         style="height:22px;width:auto;vertical-align:middle;margin-right:8px;">KEN<span
         style="color:#fff">S</span>GAMES</a>
     <ul class="nav-links">
-      <li><a href="/starfighter/">Alien Attack</a></li>
-      <li><a href="/fasttrack/">FastTrack</a></li>
-      <li><a href="/4dconnect/">Connect 4D</a></li>
+      <li><a href="/starfighter/lobby.html">Alien Attack</a></li>
+      <li><a href="/fasttrack/lobby.html">FastTrack</a></li>
+      <li><a href="/4DTicTacToe/">Connect 4D</a></li>
     </ul>
     <div class="nav-right">
       <div id="kg-player" data-profile-required="true"></div>
@@ -603,8 +600,7 @@
         <div style="display:flex;flex-direction:column;gap:8px;">
           <button class="ctrl-btn" style="width:100%;" onclick="loadFeatured('battery_bulb')">Ã°Å¸â€™Â¡ Battery +
             Bulb</button>
-          <button class="ctrl-btn" style="width:100%;" onclick="loadFeatured('motor_fan')">Ã°Å¸Å’â‚¬ Motor +
-            Fan</button>
+          <button class="ctrl-btn" style="width:100%;" onclick="loadFeatured('motor_fan')">Ã°Å¸Å’â‚¬ Motor + Fan</button>
           <button class="ctrl-btn" style="width:100%;" onclick="loadFeatured('boiler_gauge')">Ã¢â„¢Â¨ Boiler +
             Gauge</button>
           <div style="color:var(--dim);font-size:11px;line-height:1.4;">
@@ -700,8 +696,7 @@
       </div>
 
       <div class="help-hint">
-        <b>Left-click</b> part Ã¢â€ â€™ <b>Click</b> scene to pick up Ã¢â€ â€™ <b>Drag</b> to move Ã¢â€ â€™ <b>Click</b>
-        to drop<br>
+        <b>Left-click</b> part Ã¢â€ â€™ <b>Click</b> scene to pick up Ã¢â€ â€™ <b>Drag</b> to move Ã¢â€ â€™ <b>Click</b> to drop<br>
         <b>Right-click</b> while holding part to release it<br>
         <b>Drag canvas</b> to orbit | <b>Scroll</b> to zoom
       </div>
@@ -712,8 +707,7 @@
           style="color:var(--dim)">Terms</a> Ã¯Â¿Â½
         <a href="/" style="color:var(--dim)">All Games</a>
       </div>
-      <div style="color:var(--dim);opacity:0.5;font-size:0.65rem">Manifold = Expression + Attributes + Substrate Ã¯Â¿Â½
-        z =
+      <div style="color:var(--dim);opacity:0.5;font-size:0.65rem">Manifold = Expression + Attributes + Substrate Ã¯Â¿Â½ z =
         xy
       </div>
   </div>
@@ -1136,8 +1130,7 @@
       if (engine.running) return;
 
       if (placementMode && selectedTool) {
-        // Place new part. Click drops the part where it landed; the user
-        // can click it again later to pick it up and reposition.
+        // Place new part
         const pt = raycastToGround(e);
         if (pt) {
           const snapped = snapPosition({ x: pt.x, y: 0.5, z: pt.z });
@@ -1145,10 +1138,9 @@
           placementMode = false;
           selectedTool = null;
           renderer.hideGhost();
-          selectNode(node.id);
-          if (autoConnectEnabled) tryAutoConnect(node.id);
+          // Immediately pick up the newly placed part
+          startDragging(node.id, e);
           updateStats();
-          document.querySelectorAll('.part-btn').forEach(b => b.classList.remove('selected'));
         }
       } else {
         // Pick up existing part
@@ -1683,7 +1675,7 @@
   </script>
   <script src="/js/manifold_bridge.js"></script>
   <script>
-    KG_LANDING.init('assemble', '/play/?game=assemble');
+    KG_LANDING.init('assemble', '/assemble/lobby.html');
     document.getElementById('invite-code-input').addEventListener('input', function () { this.value = this.value.toUpperCase().replace(/[^A-F0-9]/g, ''); });
     if (localStorage.getItem('kg_token')) document.getElementById('signin-btn').textContent = 'LOBBY';
   </script>

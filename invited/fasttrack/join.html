@@ -132,10 +132,9 @@
     .ready-toggle-btn {
       width: 100%;
       padding: 12px;
-      background: rgba(245, 158, 11, 0.14);
-      border: 1px solid rgba(245, 158, 11, 0.42);
-      color: #fbbf24;
-      text-shadow: 0 0 8px rgba(245, 158, 11, 0.35);
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #fff;
       border-radius: 12px;
       font-weight: 800;
       cursor: pointer;
@@ -143,32 +142,10 @@
       transition: all 0.2s ease;
     }
 
-    .ready-toggle-btn:hover:not(:disabled) {
-      background: rgba(245, 158, 11, 0.22);
-      box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
-    }
-
-    .ready-toggle-btn.is-connected {
+    .ready-toggle-btn.ready {
       background: rgba(74, 222, 128, 0.15);
       border-color: rgba(74, 222, 128, 0.35);
       color: #4ade80;
-      text-shadow: 0 0 8px rgba(74, 222, 128, 0.35);
-    }
-
-    .ready-toggle-btn.is-connected:hover:not(:disabled) {
-      background: rgba(74, 222, 128, 0.22);
-      box-shadow: 0 0 12px rgba(74, 222, 128, 0.25);
-    }
-
-    .ready-toggle-btn.ready {
-      background: rgba(74, 222, 128, 0.2);
-      border-color: rgba(74, 222, 128, 0.5);
-      color: #4ade80;
-    }
-
-    .ready-toggle-btn:disabled {
-      opacity: 0.75;
-      cursor: not-allowed;
     }
 
     .wr-status-bar {
@@ -360,8 +337,8 @@
             <!-- Dynamically populated -->
           </div>
 
-          <button class="ready-toggle-btn" id="wr-ready-btn" onclick="toggleReady()" disabled>
-            🟠 Connecting...
+          <button class="ready-toggle-btn" id="wr-ready-btn" onclick="toggleReady()">
+            ⬜ Click When Ready
           </button>
 
           <div class="wr-status-bar waiting" id="wr-status">
@@ -447,7 +424,6 @@
     let receivedAnyMessage = false;
     let authTimeoutHandle = null;
     let noResponseTimeoutHandle = null;
-    let lobbySocketConnected = false;
 
     // Check URL for code
     const params = new URLSearchParams(window.location.search);
@@ -529,8 +505,6 @@
       try { socket.onopen = socket.onmessage = socket.onerror = socket.onclose = null; } catch (e) { }
       try { socket.close(); } catch (e) { }
       socket = null;
-      lobbySocketConnected = false;
-      updateReadyButtonConnectionState();
     }
 
     function connectAndJoin(code, name) {
@@ -538,8 +512,6 @@
       authReceived = false;
       receivedAnyMessage = false;
       wsAttemptIndex = 0;
-      lobbySocketConnected = false;
-      updateReadyButtonConnectionState();
       clearJoinTimers();
       closeSocketSilently();
 
@@ -565,8 +537,6 @@
 
       socket.onopen = () => {
         receivedAnyMessage = true;
-        lobbySocketConnected = true;
-        updateReadyButtonConnectionState();
         send({
           type: 'guest_login',
           name: name,
@@ -594,8 +564,6 @@
       };
 
       socket.onclose = () => {
-        lobbySocketConnected = false;
-        updateReadyButtonConnectionState();
         if (joinCancelled) return;
         // If we never got any response, try next endpoint.
         if (!receivedAnyMessage) {
@@ -656,21 +624,6 @@
           return;
         }
 
-        if (data.type === 'ready_update') {
-          sessionData = data.session || sessionData;
-          renderWaitingRoom();
-          return;
-        }
-
-        if (data.type === 'player_ready_changed') {
-          if (sessionData && data.user_id) {
-            const target = (sessionData.players || []).find(p => p.user_id === data.user_id);
-            if (target && typeof data.ready === 'boolean') target.ready = !!data.ready;
-          }
-          renderWaitingRoom();
-          return;
-        }
-
         if (data.type === 'chat') {
           appendChatMessage(data);
         }
@@ -680,10 +633,6 @@
     function send(obj) {
       if (!socket || socket.readyState !== WebSocket.OPEN) return;
       try { socket.send(JSON.stringify(obj)); } catch (e) { }
-    }
-
-    function playerReadyState(p) {
-      return !!(p && (p.ready === true || p.is_ready === true || p.isReady === true));
     }
 
     function renderWaitingRoom() {
@@ -696,14 +645,13 @@
       document.getElementById('wr-player-count').textContent = players.length;
 
       // My ready flag
-      const myUserIdStr = String(myUserId || '');
-      const me = players.find(p => String(p.user_id || '') === myUserIdStr || (!!myUsername && p.username === myUsername));
-      myReady = playerReadyState(me);
+      const me = players.find(p => p.user_id === myUserId);
+      myReady = !!me?.ready;
 
       // Render player tiles
       const list = document.getElementById('wr-players-list');
       list.innerHTML = players.map(p => {
-        const ready = playerReadyState(p);
+        const ready = !!p.ready;
         const status = p.is_ai ? '🤖 AI' : (ready ? '✅ Ready' : '⬜ Not Ready');
         return `
                     <div class="wr-player ${ready ? 'ready' : ''}">
@@ -717,15 +665,10 @@
       // Ready button
       const btn = document.getElementById('wr-ready-btn');
       btn.classList.toggle('ready', myReady);
-      updateReadyButtonConnectionState();
-      if (!lobbySocketConnected) {
-        btn.textContent = '🟠 Connecting...';
-      } else {
-        btn.textContent = myReady ? '✅ Ready (Click to Unready)' : 'I\'m Ready';
-      }
+      btn.textContent = myReady ? '✅ Ready (Click to Unready)' : '⬜ Click When Ready';
 
       // Status bar
-      const allHumansReady = players.filter(p => !p.is_ai).every(p => playerReadyState(p));
+      const allHumansReady = players.filter(p => !p.is_ai).every(p => !!p.ready);
       const statusEl = document.getElementById('wr-status');
       statusEl.classList.toggle('ready', allHumansReady);
       statusEl.textContent = allHumansReady
@@ -734,32 +677,7 @@
     }
 
     function toggleReady() {
-      if (!lobbySocketConnected) return;
-
-      const nextReady = !myReady;
-      myReady = nextReady;
-      if (sessionData && myUserId) {
-        const myUserIdStr = String(myUserId || '');
-        const me = (sessionData.players || []).find(p => String(p.user_id || '') === myUserIdStr || (!!myUsername && p.username === myUsername));
-        if (me) {
-          me.ready = nextReady;
-          me.is_ready = nextReady;
-          me.isReady = nextReady;
-        }
-      }
-      renderWaitingRoom();
-
-      send({ type: 'player_ready', ready: nextReady });
-    }
-
-    function updateReadyButtonConnectionState() {
-      const btn = document.getElementById('wr-ready-btn');
-      if (!btn) return;
-      btn.classList.toggle('is-connected', !!lobbySocketConnected);
-      btn.disabled = !lobbySocketConnected;
-      if (!lobbySocketConnected) {
-        btn.textContent = '🟠 Connecting...';
-      }
+      send({ type: 'toggle_ready' });
     }
 
     function leaveGame() {

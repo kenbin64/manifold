@@ -789,8 +789,7 @@ const AuthUI = {
             this.onLogoutSuccess();
         }
 
-        ['kg_token', 'user_token', 'kg_username', 'kg_display_name', 'kg_user_id', 'kg_avatar', 'username', 'display_name', 'user_id'].forEach(k => localStorage.removeItem(k));
-        window.location.href = '/login/';
+        window.location.href = 'https://kensgames.com/cdn-cgi/access/logout?redirectUrl=https://kensgames.com/';
     },
 
     // ============================================================

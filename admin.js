@@ -17,7 +17,8 @@ function adminLogout() {
     localStorage.removeItem('kg_username');
     localStorage.removeItem('kg_display_name');
     localStorage.removeItem('kg_avatar');
-    window.location.href = '/login/';
+    // Clear Cloudflare Access session cookie, redirect to login
+    window.location.href = '/cdn-cgi/access/logout?redirect=' + encodeURIComponent('/login/');
 }
 
 let ws = null;

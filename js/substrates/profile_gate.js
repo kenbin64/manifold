@@ -188,7 +188,8 @@
     sessionStorage.removeItem('kg_guest_token');
     sessionStorage.removeItem('kg_guest_name');
     sessionStorage.removeItem('kg_guest_avatar');
-    window.location.href = '/login/';
+    var dest = encodeURIComponent(redirect || '/login/');
+    window.location.href = '/cdn-cgi/access/logout?redirect=' + dest;
   }
 
   // Expose avatar map for pages that need it

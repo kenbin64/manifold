@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Assemble — Build Anything | KensGames</title>
-  <link rel="icon" href="/assets/masterImageFile/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="/fasttrack/assets/images/icon-192.png" type="image/png">
   <link rel="stylesheet" href="/lib/fonts/fonts.css">
   <style>
     :root {
@@ -451,11 +451,11 @@
   <nav class="nav">
     <a href="/" class="nav-logo">KEN<span style="color:#fff">S</span>GAMES</a>
     <ul class="nav-links">
-      <li><a href="/play/?game=assemble" style="color:#00ffff;font-weight:700">&#8592; LEAVE GAME</a></li>
+      <li><a href="/assemble/lobby.html" style="color:#00ffff;font-weight:700">&#8592; LEAVE GAME</a></li>
       <li><a href="/">Portal</a></li>
-      <li><a href="/play/?game=starfighter">Alien Attack</a></li>
-      <li><a href="/play/?game=fasttrack">FastTrack</a></li>
-      <li><a href="/4dconnect/">Connect 4D</a></li>
+      <li><a href="/starfighter/lobby.html">Alien Attack</a></li>
+      <li><a href="/fasttrack/lobby.html">FastTrack</a></li>
+      <li><a href="/4DTicTacToe/">Connect 4D</a></li>
     </ul>
   </nav>
 
@@ -540,8 +540,7 @@
       </div>
 
       <div class="help-hint">
-        <b>Left-click</b> palette part → <b>Click</b> scene to place →
-        <b>Click</b> a placed part to grab → <b>Drag</b> → <b>Click</b> to drop<br>
+        <b>Left-click</b> part → <b>Click</b> scene to pick up → <b>Drag</b> to move → <b>Click</b> to drop<br>
         <b>Right-click</b> while holding part for 3D rotation sphere<br>
         <b>Drag canvas</b> to orbit | <b>Scroll</b> to zoom
       </div>
@@ -777,8 +776,7 @@
       if (engine.running) return;
 
       if (placementMode && selectedTool) {
-        // Place new part. Click drops the part where it landed; the user
-        // can click it again later to pick it up and reposition.
+        // Place new part
         const pt = raycastToGround(e);
         if (pt) {
           const snapped = snapPosition({ x: pt.x, y: 0.5, z: pt.z });
@@ -787,9 +785,9 @@
           placementMode = false;
           selectedTool = null;
           renderer.hideGhost();
-          selectNode(node.id);
+          // Immediately pick up the newly placed part
+          startDragging(node.id, e);
           updateStats();
-          document.querySelectorAll('.part-btn').forEach(b => b.classList.remove('selected'));
         }
       } else {
         // Pick up existing part
@@ -1132,8 +1130,8 @@
       ManifoldBridge.init({
         id: 'assemble',
         version: '1.0.0',
-        x: 2,  // piece axes (primary)
-        y: 3,  // spatial dimensions (quadratic)  →  z = 2·9 = 18
+        x: 2,
+        y: 20,
         exposes: () => {
           const eng = window.__assembleEngine;
           if (!eng) return { running: false, partCount: 0 };

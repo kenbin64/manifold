@@ -539,7 +539,7 @@
           if (mode === 'solo') {
             const r = await fetch(`${API}/sessions/create`, { method: 'POST', headers: ah(), body: JSON.stringify({ gameId: GAME, mode: 'solo' }) });
             const d = await r.json();
-            if (d.success && d.gameUrl) { window.location.href = d.gameUrl; return; }
+            if (d.success && d.gameUrl) { window.location.href = `/starfighter/intro.html?next=${encodeURIComponent(d.gameUrl)}`; return; }
             setStatus('create-status', d.error || 'Failed', 'err');
             document.getElementById('create-btn').disabled = false; return;
           }
@@ -625,7 +625,7 @@
           document.getElementById('start-btn').disabled = true; setStatus('modal-status', 'LaunchingÃ¢â‚¬Â¦', 'info');
           const r = await fetch(`${API}/sessions/${currentSession.sessionId}/start`, { method: 'POST', headers: ah() });
           const d = await r.json();
-          if (d.success && d.gameUrl) { stopPolling(); window.location.href = d.gameUrl; return; }
+          if (d.success && d.gameUrl) { stopPolling(); window.location.href = `/starfighter/intro.html?next=${encodeURIComponent(d.gameUrl)}`; return; }
           setStatus('modal-status', d.error || 'Could not launch', 'err'); document.getElementById('start-btn').disabled = false;
         }
         async function cancelGame() {
@@ -641,7 +641,7 @@
               const r = await fetch(`${API}/sessions/${sessionId}`, { headers: ah() });
               const d = await r.json(); if (!d.success) return;
               currentSession = d.session; renderModalPlayers();
-              if (d.session.status === 'active' && d.session.gameUrl) { stopPolling(); window.location.href = d.session.gameUrl; }
+              if (d.session.status === 'active' && d.session.gameUrl) { stopPolling(); window.location.href = `/starfighter/intro.html?next=${encodeURIComponent(d.session.gameUrl)}`; }
             } catch { }
           }, 3000);
         }

@@ -3,6 +3,6 @@
     "pdf-parse": "^2.4.5"
   },
   "dependencies": {
-    "pdfjs-dist": "^2.16.105"
+    "pdfjs-dist": "^6.3.289"
   }
 }
